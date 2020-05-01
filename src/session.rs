@@ -111,6 +111,18 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     }
 }
 
+impl<A: Author, T> AsRef<Chronofold<A, T>> for Session<'_, A, T> {
+    fn as_ref(&self) -> &Chronofold<A, T> {
+        self.chronofold
+    }
+}
+
+impl<A: Author, T> AsMut<Chronofold<A, T>> for Session<'_, A, T> {
+    fn as_mut(&mut self) -> &mut Chronofold<A, T> {
+        self.chronofold
+    }
+}
+
 impl<A: Author, T> Deref for Session<'_, A, T> {
     type Target = Chronofold<A, T>;
 
