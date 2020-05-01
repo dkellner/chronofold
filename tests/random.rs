@@ -42,7 +42,11 @@ fn random_edits(
 
     // 1 to 5 inserts of random words at random positions
     for _ in 0..rng.gen_range(1, 6) {
-        let current = session.iter().map(|(_, i)| i).collect::<Vec<_>>();
+        let current = session
+            .chronofold
+            .iter()
+            .map(|(_, i)| i)
+            .collect::<Vec<_>>();
         if !current.is_empty() {
             let idx = current[rng.gen_range(0, current.len())];
             session.splice(idx..idx, random_word(rng).chars());
@@ -53,12 +57,21 @@ fn random_edits(
 
     // 1 to 2 deletions of 1 to 3 characters at random positions
     for _ in 0..rng.gen_range(0, 2) {
-        let current = session.iter().map(|(_, i)| i).collect::<Vec<_>>();
+        let current = session
+            .chronofold
+            .iter()
+            .map(|(_, i)| i)
+            .collect::<Vec<_>>();
         if !current.is_empty() {
             let length = usize::min(rng.gen_range(1, 4), current.len());
             let start = current[rng.gen_range(0, current.len() - length + 1)];
             eprintln!("{} {} {}", current.len(), length, start);
-            let (_, end) = session.iter_range(start..).take(length).last().unwrap();
+            let (_, end) = session
+                .chronofold
+                .iter_range(start..)
+                .take(length)
+                .last()
+                .unwrap();
             session.splice(start..=end, "".chars());
         }
     }

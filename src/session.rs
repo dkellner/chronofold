@@ -1,4 +1,4 @@
-use std::ops::{Bound, Deref, DerefMut, RangeBounds};
+use std::ops::{Bound, RangeBounds};
 
 use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
 
@@ -22,7 +22,11 @@ pub struct Session<'a, A: Author, T> {
 impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     /// Clears the chronofold, removing all elements.
     pub fn clear(&mut self) {
-        let indices = self.iter().map(|(_, idx)| idx).collect::<Vec<_>>();
+        let indices = self
+            .chronofold
+            .iter()
+            .map(|(_, idx)| idx)
+            .collect::<Vec<_>>();
         for idx in indices {
             self.remove(idx);
         }
@@ -31,7 +35,7 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     /// Appends an element to the back of the chronofold and returns the new
     /// element's log index.
     pub fn push_back(&mut self, value: T) -> LogIndex {
-        if let Some((_, last_index)) = self.iter().last() {
+        if let Some((_, last_index)) = self.chronofold.iter().last() {
             self.insert_after(Some(last_index), value)
         } else {
             self.insert_after(None, value)
@@ -63,7 +67,7 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     /// Extends the chronofold with the contents of `iter`, returns the log
     /// index of the last inserted element, if any.
     pub fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) -> Option<LogIndex> {
-        let oob = LogIndex(self.log.len());
+        let oob = LogIndex(self.chronofold.log.len());
         self.splice(oob..oob, iter)
     }
 
@@ -77,7 +81,7 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     {
         let mut last_idx = match range.start_bound() {
             Bound::Unbounded => None,
-            Bound::Included(idx) => self.index_before(*idx),
+            Bound::Included(idx) => self.chronofold.index_before(*idx),
             Bound::Excluded(idx) => Some(*idx),
         };
         let to_remove: Vec<LogIndex> = self
@@ -97,17 +101,18 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     fn apply_change(&mut self, reference: Option<LogIndex>, change: Change<T>) -> LogIndex {
         // TODO: Using the reference's log index directly will be faster than
         // applying a generic op. But this keeps the code simpler for now.
-        let prev_id = reference.map(|r| self.timestamps[r.0]);
+        let prev_id = reference.map(|r| self.chronofold.timestamps[r.0]);
         let op = Op::new(self.next_timestamp(), prev_id, change);
         let new_index = op.id.0;
         self.ops.push(op.clone());
-        self.apply(op)
+        self.chronofold
+            .apply(op)
             .expect("application of own op should never fail");
         new_index
     }
 
     fn next_timestamp(&self) -> Timestamp<A> {
-        let next_index = LogIndex(self.log.len());
+        let next_index = LogIndex(self.chronofold.log.len());
         Timestamp(next_index, self.author)
     }
 }
@@ -121,19 +126,5 @@ impl<A: Author, T> AsRef<Chronofold<A, T>> for Session<'_, A, T> {
 impl<A: Author, T> AsMut<Chronofold<A, T>> for Session<'_, A, T> {
     fn as_mut(&mut self) -> &mut Chronofold<A, T> {
         self.chronofold
-    }
-}
-
-impl<A: Author, T> Deref for Session<'_, A, T> {
-    type Target = Chronofold<A, T>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.chronofold
-    }
-}
-
-impl<A: Author, T> DerefMut for Session<'_, A, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.chronofold
     }
 }
