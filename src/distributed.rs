@@ -27,9 +27,9 @@ impl<T> Author for T where
 /// or was concurrent.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Timestamp<A: Author>(pub LogIndex, pub A);
+pub struct Timestamp<A>(pub LogIndex, pub A);
 
-impl<A: Author> fmt::Display for Timestamp<A> {
+impl<A: fmt::Display> fmt::Display for Timestamp<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<{}, {}>", self.0, self.1)
     }
@@ -42,13 +42,13 @@ impl<A: Author> fmt::Display for Timestamp<A> {
 /// synchronized.
 #[derive(PartialEq, Eq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Op<A: Author, T> {
+pub struct Op<A, T> {
     pub id: Timestamp<A>,
     pub reference: Option<Timestamp<A>>, // None = root
     pub change: Change<T>,
 }
 
-impl<A: Author, T> Op<A, T> {
+impl<A, T> Op<A, T> {
     pub fn new(id: Timestamp<A>, reference: Option<Timestamp<A>>, change: Change<T>) -> Self {
         Self {
             id,

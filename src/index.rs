@@ -10,7 +10,7 @@ use crate::{Author, Change, Chronofold};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LogIndex(pub usize);
 
-impl<A: Author, T> Index<LogIndex> for Chronofold<A, T> {
+impl<A, T> Index<LogIndex> for Chronofold<A, T> {
     type Output = Change<T>;
 
     fn index(&self, index: LogIndex) -> &Self::Output {

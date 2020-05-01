@@ -123,7 +123,7 @@ pub enum Change<T> {
 /// [`Index`]: https://doc.rust-lang.org/std/ops/trait.Index.html
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Chronofold<A: Author, T> {
+pub struct Chronofold<A, T> {
     log: Vec<Change<T>>,
     root: Option<LogIndex>,
     // TODO: Use sparse arrays for the following secondary logs and exclude the
@@ -134,7 +134,7 @@ pub struct Chronofold<A: Author, T> {
     deleted: Vec<bool>,
 }
 
-impl<A: Author, T> Chronofold<A, T> {
+impl<A, T> Chronofold<A, T> {
     /// Constructs a new, empty chronofold.
     pub fn new() -> Self {
         Self::default()
@@ -148,7 +148,9 @@ impl<A: Author, T> Chronofold<A, T> {
             ops: Vec::new(),
         }
     }
+}
 
+impl<A: Author, T> Chronofold<A, T> {
     /// Applies an op to the chronofold.
     pub fn apply(&mut self, op: Op<A, T>) -> Result<(), ChronofoldError<A>> {
         // Convert the reference timestamp, as all our internal functions work
@@ -223,7 +225,7 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 }
 
-impl<A: Author, T> Default for Chronofold<A, T> {
+impl<A, T> Default for Chronofold<A, T> {
     fn default() -> Self {
         Self {
             log: Vec::default(),

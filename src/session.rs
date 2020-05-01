@@ -12,7 +12,7 @@ use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
 /// Rust's ownership rules enforce that there is always just one `Session` per
 /// chronofold.
 #[derive(Debug)]
-pub struct Session<'a, A: Author, T> {
+pub struct Session<'a, A, T> {
     pub chronofold: &'a mut Chronofold<A, T>,
     pub author: A,
     pub ops: Vec<Op<A, T>>,
@@ -117,13 +117,13 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     }
 }
 
-impl<A: Author, T> AsRef<Chronofold<A, T>> for Session<'_, A, T> {
+impl<A, T> AsRef<Chronofold<A, T>> for Session<'_, A, T> {
     fn as_ref(&self) -> &Chronofold<A, T> {
         self.chronofold
     }
 }
 
-impl<A: Author, T> AsMut<Chronofold<A, T>> for Session<'_, A, T> {
+impl<A, T> AsMut<Chronofold<A, T>> for Session<'_, A, T> {
     fn as_mut(&mut self) -> &mut Chronofold<A, T> {
         self.chronofold
     }
