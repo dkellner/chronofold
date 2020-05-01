@@ -7,6 +7,7 @@ use crate::{Author, Change, Chronofold};
 ///
 /// The indices are `usize` as they are used to index into `Vec`s.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LogIndex(pub usize);
 
 impl<A: Author, T> Index<LogIndex> for Chronofold<A, T> {

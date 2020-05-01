@@ -80,8 +80,13 @@ pub use crate::session::*;
 
 use std::fmt;
 
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
+
 /// An entry in the chronofold's log.
 #[derive(PartialEq, Eq, Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Change<T> {
     Insert(T),
     Delete,
@@ -117,6 +122,7 @@ pub enum Change<T> {
 /// [`Vec`]: https://doc.rust-lang.org/std/vec/struct.Vec.html
 /// [`Index`]: https://doc.rust-lang.org/std/ops/trait.Index.html
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Chronofold<A: Author, T> {
     log: Vec<Change<T>>,
     root: Option<LogIndex>,

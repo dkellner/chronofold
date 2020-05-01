@@ -26,6 +26,7 @@ impl<T> Author for T where
 /// greater than another, its associated event either happened after the other
 /// or was concurrent.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Timestamp<A: Author>(pub LogIndex, pub A);
 
 impl<A: Author> fmt::Display for Timestamp<A> {
@@ -40,6 +41,7 @@ impl<A: Author> fmt::Display for Timestamp<A> {
 /// logs. Different authors exchange ops to keep their local replicas
 /// synchronized.
 #[derive(PartialEq, Eq, Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Op<A: Author, T> {
     pub id: Timestamp<A>,
     pub reference: Option<Timestamp<A>>, // None = root
