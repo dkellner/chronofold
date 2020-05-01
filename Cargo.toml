@@ -1,15 +1,19 @@
 [package]
 name = "chronofold"
 version = "0.1.0"
+
 authors = ["Dominik Kellner <dkellner@dkellner.de>"]
+description = "A conflict-free replicated data structure (a.k.a CRDT) for versioned text"
 edition = "2018"
-description = "A replicated data structure for versioned text"
+homepage = "https://git.sr.ht/~dkellner/chronofold"
+license = "GPL-3.0"
 readme = "README.md"
+repository = "https://git.sr.ht/~dkellner/chronofold"
 
 [dependencies]
 thiserror = "1.0.15"
 
 [dev-dependencies]
 anyhow = "1.0.28"
-rand = "0.7.3"
 proptest = "0.9.6"
+rand = "0.7.3"
