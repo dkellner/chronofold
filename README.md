@@ -1,8 +1,67 @@
 # Chronofold
 
-This implementation is based on ideas published in the paper
-[https://arxiv.org/abs/2002.09511]("Chronofold: a data structure for versioned
-text") by Victor Grishchenko and Mikhail Patrakeev.
+Chronofold is a conflict-free replicated data structure (a.k.a. *CRDT*) for
+versioned text.
+
+This crate aims to offer a fast implementation with an easy-to-use `Vec`-like
+API. It should be near impossible to shoot yourself in the foot and end up with
+corrupted or lost data.
+
+**Note:** We are not there yet! While this implementation should be correct, it
+is not yet optimized for speed and memory usage. The API might see some changes
+as we continue to explore different use cases.
+
+This implementation is based on ideas published in the paper ["Chronofold: a
+data structure for versioned text"][paper] by Victor Grishchenko and Mikhail
+Patrakeev. If you look for a formal introduction to what a chronofold is,
+reading that excellent paper is highly recommended!
+
+[paper]: https://arxiv.org/abs/2002.09511
+
+# Example usage
+
+```rust
+use chronofold::{Chronofold, LogIndex};
+
+type AuthorId = &'static str;
+
+// Alice creates a chronofold on her machine, makes some initial changes
+// and sends a copy to Bob.
+let mut cfold_a = Chronofold::<AuthorId, char>::default();
+cfold_a.session("alice").extend("Hello chronfold!".chars());
+let mut cfold_b = cfold_a.clone();
+
+// Alice adds some more text, ...
+let ops_a = {
+    let mut session = cfold_a.session("alice");
+    session.splice(
+        LogIndex(15)..LogIndex(15),
+        " - a data structure for versioned text".chars(),
+    );
+    session.ops.into_iter()
+};
+
+// ... while Bob fixes a typo.
+let ops_b = {
+    let mut session = cfold_b.session("bob");
+    session.insert_after(Some(LogIndex(10)), 'o');
+    session.ops.into_iter()
+};
+
+// Now their respective states have diverged.
+assert_eq!(
+    "Hello chronfold - a data structure for versioned text!",
+    format!("{}", cfold_a),
+);
+assert_eq!("Hello chronofold!", format!("{}", cfold_b));
+
+// As soon as both have seen all ops, their states have converged.
+ops_a.for_each(|op| cfold_b.apply(op).unwrap());
+ops_b.for_each(|op| cfold_a.apply(op).unwrap());
+let final_text = "Hello chronofold - a data structure for versioned text!";
+assert_eq!(final_text, format!("{}", cfold_a));
+assert_eq!(final_text, format!("{}", cfold_b));
+```
 
 # Roadmap
 
