@@ -129,6 +129,11 @@ pub struct Chronofold<A: Author, T> {
 }
 
 impl<A: Author, T> Chronofold<A, T> {
+    /// Constructs a new, empty chronofold.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Creates an editing session for a single author.
     pub fn session(&mut self, author: A) -> Session<'_, A, T> {
         Session {
