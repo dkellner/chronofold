@@ -1,2 +1,4 @@
+.envrc
 /target
 Cargo.lock
+shell.nix
