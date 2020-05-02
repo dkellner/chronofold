@@ -20,7 +20,7 @@
 //!
 //! # Example usage
 //!
-//! ```
+//! ```rust
 //! use chronofold::{Chronofold, LogIndex, Op};
 //!
 //! type AuthorId = &'static str;
