@@ -21,7 +21,7 @@
 //! # Example usage
 //!
 //! ```
-//! use chronofold::{Chronofold, LogIndex};
+//! use chronofold::{Chronofold, LogIndex, Op};
 //!
 //! type AuthorId = &'static str;
 //!
@@ -32,20 +32,20 @@
 //! let mut cfold_b = cfold_a.clone();
 //!
 //! // Alice adds some more text, ...
-//! let ops_a = {
+//! let ops_a: Vec<Op<AuthorId, char>> = {
 //!     let mut session = cfold_a.session("alice");
 //!     session.splice(
 //!         LogIndex(15)..LogIndex(15),
 //!         " - a data structure for versioned text".chars(),
 //!     );
-//!     session.ops.into_iter()
+//!     session.iter_ops().collect()
 //! };
 //!
 //! // ... while Bob fixes a typo.
-//! let ops_b = {
+//! let ops_b: Vec<Op<AuthorId, char>> = {
 //!     let mut session = cfold_b.session("bob");
 //!     session.insert_after(Some(LogIndex(10)), 'o');
-//!     session.ops.into_iter()
+//!     session.iter_ops().collect()
 //! };
 //!
 //! // Now their respective states have diverged.
@@ -56,8 +56,12 @@
 //! assert_eq!("Hello chronofold!", format!("{}", cfold_b));
 //!
 //! // As soon as both have seen all ops, their states have converged.
-//! ops_a.for_each(|op| cfold_b.apply(op).unwrap());
-//! ops_b.for_each(|op| cfold_a.apply(op).unwrap());
+//! for op in ops_a {
+//!     cfold_b.apply(op).unwrap();
+//! }
+//! for op in ops_b {
+//!     cfold_a.apply(op).unwrap();
+//! }
 //! let final_text = "Hello chronofold - a data structure for versioned text!";
 //! assert_eq!(final_text, format!("{}", cfold_a));
 //! assert_eq!(final_text, format!("{}", cfold_b));
@@ -142,11 +146,11 @@ impl<A, T> Chronofold<A, T> {
 
     /// Creates an editing session for a single author.
     pub fn session(&mut self, author: A) -> Session<'_, A, T> {
-        Session {
-            chronofold: self,
-            author,
-            ops: Vec::new(),
-        }
+        Session::new(author, self)
+    }
+
+    pub(crate) fn next_log_index(&self) -> LogIndex {
+        LogIndex(self.log.len())
     }
 }
 
@@ -160,11 +164,20 @@ impl<A: Author, T> Chronofold<A, T> {
             None => None,
         };
 
+        self.apply_change(op.id, reference, op.change).map(|_| ())
+    }
+
+    pub(crate) fn apply_change(
+        &mut self,
+        id: Timestamp<A>,
+        reference: Option<LogIndex>,
+        change: Change<T>,
+    ) -> Result<LogIndex, ChronofoldError<A>> {
         // Find the predecessor to `op`.
         let predecessor = if let Some(idx) = self
             .iter_log_indices_causal_range(..)
             .filter(|i| self.references[i.0] == reference)
-            .filter(|i| self.timestamps[i.0] > op.id)
+            .filter(|i| self.timestamps[i.0] > id)
             .last()
         {
             self.iter_subtree(idx).last()
@@ -185,17 +198,17 @@ impl<A: Author, T> Chronofold<A, T> {
         }
 
         // If `op` is a removal, mark the referenced change as deleted.
-        if let (Some(idx), Change::Delete) = (reference, &op.change) {
+        if let (Some(idx), Change::Delete) = (reference, &change) {
             self.deleted[idx.0] = true;
         }
 
         // Append to the chronofold's log and secondary logs.
-        self.log.push(op.change);
+        self.log.push(change);
         self.next_indices.push(next_index);
-        self.timestamps.push(op.id);
+        self.timestamps.push(id);
         self.references.push(reference);
         self.deleted.push(false);
-        Ok(())
+        Ok(new_index)
     }
 
     /// Returns `true` if the chronofold contains no elements.

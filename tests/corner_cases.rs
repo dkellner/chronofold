@@ -1,4 +1,4 @@
-use chronofold::{Chronofold, LogIndex, Session};
+use chronofold::{Chronofold, LogIndex, Op, Session};
 
 #[test]
 fn concurrent_insertions() {
@@ -97,30 +97,34 @@ where
     cfold_left.session(1).extend(initial.chars());
     let mut cfold_right = cfold_left.clone();
 
-    let ops_left = {
+    let ops_left: Vec<Op<u8, char>> = {
         let mut session = cfold_left.session(1);
         mutate_left(&mut session);
-        session.ops.into_iter()
+        session.iter_ops().collect()
     };
-    let ops_right = {
+    let ops_right: Vec<Op<u8, char>> = {
         let mut session = cfold_right.session(2);
         mutate_right(&mut session);
-        session.ops.into_iter()
+        session.iter_ops().collect()
     };
 
-    ops_left.for_each(|op| cfold_right.apply(op).unwrap());
-    ops_right.for_each(|op| cfold_left.apply(op).unwrap());
+    for op in ops_left {
+        cfold_right.apply(op).unwrap();
+    }
+    for op in ops_right {
+        cfold_left.apply(op).unwrap();
+    }
 
     assert_eq!(
         expected,
         format!("{}", cfold_left),
         "Left ops:\n{:#?}",
-        cfold_left.iter_ops().collect::<Vec<_>>(),
+        cfold_left.iter_ops(..).collect::<Vec<_>>(),
     );
     assert_eq!(
         expected,
         format!("{}", cfold_right),
         "Right ops:\n{:#?}",
-        cfold_right.iter_ops().collect::<Vec<_>>()
+        cfold_right.iter_ops(..).collect::<Vec<_>>()
     );
 }

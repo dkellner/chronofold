@@ -13,13 +13,24 @@ use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
 /// chronofold.
 #[derive(Debug)]
 pub struct Session<'a, A, T> {
-    pub chronofold: &'a mut Chronofold<A, T>,
-    pub author: A,
-    pub ops: Vec<Op<A, T>>,
+    chronofold: &'a mut Chronofold<A, T>,
+    author: A,
+    first_index: LogIndex,
 }
 
-// TODO: Don't require `Clone` for `T` here.
-impl<'a, A: Author, T: Clone> Session<'a, A, T> {
+impl<'a, A, T> Session<'a, A, T> {
+    /// Creates an editing session for a single author.
+    pub fn new(author: A, chronofold: &'a mut Chronofold<A, T>) -> Self {
+        let first_index = chronofold.next_log_index();
+        Self {
+            chronofold,
+            author,
+            first_index,
+        }
+    }
+}
+
+impl<'a, A: Author, T> Session<'a, A, T> {
     /// Clears the chronofold, removing all elements.
     pub fn clear(&mut self) {
         let indices = self
@@ -99,21 +110,24 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     }
 
     fn apply_change(&mut self, reference: Option<LogIndex>, change: Change<T>) -> LogIndex {
-        // TODO: Using the reference's log index directly will be faster than
-        // applying a generic op. But this keeps the code simpler for now.
-        let prev_id = reference.map(|r| self.chronofold.timestamps[r.0]);
-        let op = Op::new(self.next_timestamp(), prev_id, change);
-        let new_index = op.id.0;
-        self.ops.push(op.clone());
         self.chronofold
-            .apply(op)
-            .expect("application of own op should never fail");
-        new_index
+            .apply_change(self.next_timestamp(), reference, change)
+            .expect("application of own change should never fail")
     }
 
     fn next_timestamp(&self) -> Timestamp<A> {
         let next_index = LogIndex(self.chronofold.log.len());
         Timestamp(next_index, self.author)
+    }
+}
+
+impl<'a, A: Author, T: Clone> Session<'a, A, T> {
+    /// Returns an iterator over ops in log order, that where created in this
+    /// session.
+    pub fn iter_ops(&'a self) -> impl Iterator<Item = Op<A, T>> + 'a {
+        self.chronofold
+            .iter_ops(self.first_index..)
+            .filter(move |op| op.id.1 == self.author)
     }
 }
 

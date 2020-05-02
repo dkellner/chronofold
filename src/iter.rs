@@ -85,11 +85,15 @@ impl<A: Author, T> Chronofold<A, T> {
 
 impl<A: Author, T: Clone> Chronofold<A, T> {
     /// Returns an iterator over ops in log order.
-    pub fn iter_ops<'a>(&'a self) -> impl Iterator<Item = Op<A, T>> + 'a {
+    pub fn iter_ops<'a, R>(&'a self, range: R) -> impl Iterator<Item = Op<A, T>> + 'a
+    where
+        R: RangeBounds<LogIndex> + 'a,
+    {
         self.log
             .iter()
             .cloned()
             .enumerate()
+            .filter(move |(i, _)| range.contains(&LogIndex(*i)))
             .map(move |(i, change)| {
                 Op::new(
                     self.timestamps[i],
