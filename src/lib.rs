@@ -157,6 +157,13 @@ impl<A, T> Chronofold<A, T> {
 impl<A: Author, T> Chronofold<A, T> {
     /// Applies an op to the chronofold.
     pub fn apply(&mut self, op: Op<A, T>) -> Result<(), ChronofoldError<A>> {
+        // Check if an op with the same id was applied already.
+        // TODO: Consider adding an `apply_unchecked` variant to skip this
+        // check.
+        if self.log_index(&op.id).is_ok() {
+            return Err(ChronofoldError::ExistingTimestamp(op.id));
+        }
+
         // Convert the reference timestamp, as all our internal functions work
         // with log indices.
         let reference = match op.reference {
