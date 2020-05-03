@@ -154,24 +154,27 @@ impl<A, T> Chronofold<A, T> {
     }
 }
 
-impl<A: Author, T> Chronofold<A, T> {
+impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
     /// Applies an op to the chronofold.
-    pub fn apply(&mut self, op: Op<A, T>) -> Result<(), ChronofoldError<A>> {
+    pub fn apply(&mut self, op: Op<A, T>) -> Result<(), ChronofoldError<A, T>> {
         // Check if an op with the same id was applied already.
         // TODO: Consider adding an `apply_unchecked` variant to skip this
         // check.
-        if self.log_index(&op.id).is_ok() {
-            return Err(ChronofoldError::ExistingTimestamp(op.id));
+        if self.log_index(&op.id).is_some() {
+            return Err(ChronofoldError::ExistingTimestamp(op));
         }
 
         // Convert the reference timestamp, as all our internal functions work
         // with log indices.
-        let reference = match op.reference {
-            Some(t) => Some(self.log_index(&t)?),
-            None => None,
-        };
-
-        self.apply_change(op.id, reference, op.change).map(|_| ())
+        match op.reference {
+            Some(t) => match self.log_index(&t) {
+                Some(reference) => self
+                    .apply_change(op.id, Some(reference), op.change)
+                    .map(|_| ()),
+                None => Err(ChronofoldError::UnknownReference(op)),
+            },
+            None => self.apply_change(op.id, None, op.change).map(|_| ()),
+        }
     }
 
     pub(crate) fn apply_change(
@@ -179,7 +182,7 @@ impl<A: Author, T> Chronofold<A, T> {
         id: Timestamp<A>,
         reference: Option<LogIndex>,
         change: Change<T>,
-    ) -> Result<LogIndex, ChronofoldError<A>> {
+    ) -> Result<LogIndex, ChronofoldError<A, T>> {
         // Find the predecessor to `op`.
         let predecessor = if let Some(idx) = self
             .iter_log_indices_causal_range(..)
@@ -235,13 +238,13 @@ impl<A: Author, T> Chronofold<A, T> {
         self.log.get(index.0)
     }
 
-    fn log_index(&self, timestamp: &Timestamp<A>) -> Result<LogIndex, ChronofoldError<A>> {
+    fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LogIndex> {
         for i in (timestamp.0).0..self.log.len() {
             if self.timestamps[i] == *timestamp {
-                return Ok(LogIndex(i));
+                return Some(LogIndex(i));
             }
         }
-        Err(ChronofoldError::UnknownTimestamp(*timestamp))
+        None
     }
 }
 

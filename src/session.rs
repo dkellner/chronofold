@@ -1,4 +1,5 @@
 use std::ops::{Bound, RangeBounds};
+use std::fmt;
 
 use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
 
@@ -30,7 +31,7 @@ impl<'a, A, T> Session<'a, A, T> {
     }
 }
 
-impl<'a, A: Author, T> Session<'a, A, T> {
+impl<'a, A: Author, T: fmt::Debug> Session<'a, A, T> {
     /// Clears the chronofold, removing all elements.
     pub fn clear(&mut self) {
         let indices = self
