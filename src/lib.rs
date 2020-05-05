@@ -125,7 +125,7 @@ pub enum Change<T> {
 ///
 /// [`Vec`]: https://doc.rust-lang.org/std/vec/struct.Vec.html
 /// [`Index`]: https://doc.rust-lang.org/std/ops/trait.Index.html
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Chronofold<A, T> {
     log: Vec<Change<T>>,
