@@ -16,5 +16,4 @@ thiserror = "1.0.15"
 
 [dev-dependencies]
 anyhow = "1.0.28"
-proptest = "0.9.6"
 rand = "0.7.3"
