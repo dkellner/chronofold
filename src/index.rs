@@ -25,6 +25,15 @@ impl fmt::Display for LogIndex {
 }
 
 impl<A: Author, T> Chronofold<A, T> {
+    /// Returns the index of the last log entry (in log order).
+    pub fn last_index(&self) -> Option<LogIndex> {
+        if !self.log.is_empty() {
+            Some(LogIndex(self.log.len() - 1))
+        } else {
+            None
+        }
+    }
+
     /// Returns the previous log index (causal order).
     ///
     /// Unlike `index`, this function never panics. It returns `None` in two
