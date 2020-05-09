@@ -76,11 +76,13 @@ mod error;
 mod index;
 mod iter;
 mod session;
+mod version;
 pub use crate::distributed::*;
 pub use crate::error::*;
 pub use crate::index::*;
 pub use crate::iter::*;
 pub use crate::session::*;
+pub use crate::version::*;
 
 use std::fmt;
 
@@ -127,9 +129,10 @@ pub enum Change<T> {
 /// [`Index`]: https://doc.rust-lang.org/std/ops/trait.Index.html
 #[derive(PartialEq, Eq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Chronofold<A, T> {
+pub struct Chronofold<A: Author, T> {
     log: Vec<Change<T>>,
     root: Option<LogIndex>,
+    version: Version<A>,
     // TODO: Use sparse arrays for the following secondary logs and exclude the
     // trivial cases to save memory.
     next_indices: Vec<Option<LogIndex>>,
@@ -138,7 +141,7 @@ pub struct Chronofold<A, T> {
     deleted: Vec<bool>,
 }
 
-impl<A, T> Chronofold<A, T> {
+impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
     /// Constructs a new, empty chronofold.
     pub fn new() -> Self {
         Self::default()
@@ -152,9 +155,7 @@ impl<A, T> Chronofold<A, T> {
     pub(crate) fn next_log_index(&self) -> LogIndex {
         LogIndex(self.log.len())
     }
-}
 
-impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
     /// Applies an op to the chronofold.
     pub fn apply(&mut self, op: Op<A, T>) -> Result<(), ChronofoldError<A, T>> {
         // Check if an op with the same id was applied already.
@@ -218,6 +219,10 @@ impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
         self.timestamps.push(id);
         self.references.push(reference);
         self.deleted.push(false);
+
+        // Increment version.
+        self.version.inc(&id);
+
         Ok(new_index)
     }
 
@@ -248,11 +253,12 @@ impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
     }
 }
 
-impl<A, T> Default for Chronofold<A, T> {
+impl<A: Author, T> Default for Chronofold<A, T> {
     fn default() -> Self {
         Self {
             log: Vec::default(),
             root: None,
+            version: Version::default(),
             next_indices: Vec::default(),
             timestamps: Vec::default(),
             references: Vec::default(),

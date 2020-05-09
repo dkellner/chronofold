@@ -13,13 +13,13 @@ use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
 /// Rust's ownership rules enforce that there is always just one `Session` per
 /// chronofold.
 #[derive(Debug)]
-pub struct Session<'a, A, T> {
+pub struct Session<'a, A: Author, T> {
     chronofold: &'a mut Chronofold<A, T>,
     author: A,
     first_index: LogIndex,
 }
 
-impl<'a, A, T> Session<'a, A, T> {
+impl<'a, A: Author, T: fmt::Debug> Session<'a, A, T> {
     /// Creates an editing session for a single author.
     pub fn new(author: A, chronofold: &'a mut Chronofold<A, T>) -> Self {
         let first_index = chronofold.next_log_index();
@@ -29,9 +29,7 @@ impl<'a, A, T> Session<'a, A, T> {
             first_index,
         }
     }
-}
 
-impl<'a, A: Author, T: fmt::Debug> Session<'a, A, T> {
     /// Clears the chronofold, removing all elements.
     pub fn clear(&mut self) {
         let indices = self
@@ -132,13 +130,13 @@ impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     }
 }
 
-impl<A, T> AsRef<Chronofold<A, T>> for Session<'_, A, T> {
+impl<A: Author, T> AsRef<Chronofold<A, T>> for Session<'_, A, T> {
     fn as_ref(&self) -> &Chronofold<A, T> {
         self.chronofold
     }
 }
 
-impl<A, T> AsMut<Chronofold<A, T>> for Session<'_, A, T> {
+impl<A: Author, T> AsMut<Chronofold<A, T>> for Session<'_, A, T> {
     fn as_mut(&mut self) -> &mut Chronofold<A, T> {
         self.chronofold
     }
