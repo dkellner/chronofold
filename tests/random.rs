@@ -57,7 +57,6 @@ fn random_edits(
         if !current.is_empty() {
             let length = usize::min(rng.gen_range(1, 4), current.len());
             let start = current[rng.gen_range(0, current.len() - length + 1)];
-            eprintln!("{} {} {}", current.len(), length, start);
             let (_, end) = session
                 .as_ref()
                 .iter_range(start..)

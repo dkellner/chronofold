@@ -22,7 +22,6 @@ fn existing_timestamp() {
     let mut cfold = Chronofold::<u8, char>::new();
     let op = Op::new(Timestamp(LogIndex(0), 1), None, Change::Insert('.'));
     assert_eq!(Ok(()), cfold.apply(op.clone()));
-    eprintln!("{:?}", cfold);
     assert_eq!(
         Err(ChronofoldError::ExistingTimestamp(op.clone())),
         cfold.apply(op)
