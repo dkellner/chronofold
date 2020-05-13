@@ -6,7 +6,7 @@ authors = ["Dominik Kellner <dkellner@dkellner.de>"]
 description = "A conflict-free replicated data structure (a.k.a CRDT) for versioned text"
 edition = "2018"
 homepage = "https://git.sr.ht/~dkellner/chronofold"
-license = "GPL-3.0"
+license = "AGPL-3.0"
 readme = "README.md"
 repository = "https://git.sr.ht/~dkellner/chronofold"
 
