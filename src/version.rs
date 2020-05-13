@@ -78,8 +78,9 @@ impl<A: Author, T: Clone> Chronofold<A, T> {
         &'a self,
         version: &'a Version<A>,
     ) -> impl Iterator<Item = Op<A, T>> + 'a {
-        let lower_bound = version.log_indices.values().min().unwrap_or(&LogIndex(0));
-        self.iter_ops(lower_bound..)
+        // TODO: Don't iterate over all ops in cases where that is not
+        // necessary.
+        self.iter_ops(..)
             .filter(move |op| match version.log_indices.get(&op.id.1) {
                 None => true,
                 Some(idx) => op.id.0 > *idx,
