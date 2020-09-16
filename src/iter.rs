@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+use std::fmt;
+use std::matches;
 use std::ops::{Bound, RangeBounds};
 
 use crate::{Author, Change, Chronofold, LogIndex, Op};
@@ -8,14 +10,11 @@ impl<A: Author, T> Chronofold<A, T> {
     ///
     /// TODO: The name is a bit unwieldy. I'm reluctant to add it to the public
     /// API before giving it more thought.
-    pub(crate) fn iter_log_indices_causal_range<'a, R>(
-        &'a self,
-        range: R,
-    ) -> impl Iterator<Item = LogIndex> + 'a
+    pub(crate) fn iter_log_indices_causal_range<'a, R>(&'a self, range: R) -> CausalIter<'a, A, T>
     where
         R: RangeBounds<LogIndex>,
     {
-        let mut current = match range.start_bound() {
+        let current = match range.start_bound() {
             Bound::Unbounded => self.root,
             Bound::Included(idx) => Some(*idx),
             Bound::Excluded(idx) => self.index_after(*idx),
@@ -25,15 +24,11 @@ impl<A: Author, T> Chronofold<A, T> {
             Bound::Included(idx) => self.index_after(*idx),
             Bound::Excluded(idx) => Some(*idx),
         };
-        std::iter::from_fn(move || {
-            let idx = current?;
-            current = self.index_after(idx);
-            if Some(idx) != first_excluded {
-                Some(idx)
-            } else {
-                None
-            }
-        })
+        CausalIter {
+            cfold: self,
+            current,
+            first_excluded,
+        }
     }
 
     /// Returns an iterator over a subtree.
@@ -44,9 +39,9 @@ impl<A: Author, T> Chronofold<A, T> {
         root: LogIndex,
     ) -> impl Iterator<Item = LogIndex> + 'a {
         let mut subtree: HashSet<LogIndex> = HashSet::new();
-        self.iter_log_indices_causal_range(root..)
-            .filter_map(move |idx| {
-                if idx == root || subtree.contains(&self.references[idx.0]?) {
+        self.iter_log_indices_causal_range(..)
+            .filter_map(move |(_, idx)| {
+                if idx == root || subtree.contains(&self.references.get(&idx)?) {
                     subtree.insert(idx);
                     Some(idx)
                 } else {
@@ -56,20 +51,21 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     /// Returns an iterator over elements and their log indices in causal order.
-    pub fn iter(&self) -> impl Iterator<Item = (&T, LogIndex)> {
+    pub fn iter(&self) -> Iter<A, T> {
         self.iter_range(..)
     }
 
     /// Returns an iterator over elements and their log indices in causal order.
-    pub fn iter_range<R>(&self, range: R) -> impl Iterator<Item = (&T, LogIndex)>
+    pub fn iter_range<R>(&self, range: R) -> Iter<A, T>
     where
         R: RangeBounds<LogIndex>,
     {
-        self.iter_log_indices_causal_range(range)
-            .filter_map(move |i| match (&self.log[i.0], self.deleted[i.0]) {
-                (Change::Insert(value), false) => Some((value, i)),
-                _ => None,
-            })
+        let mut causal_iter = self.iter_log_indices_causal_range(range);
+        let current = causal_iter.next();
+        Iter {
+            causal_iter,
+            current,
+        }
     }
 
     /// Returns an iterator over elements in causal order.
@@ -83,7 +79,7 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 }
 
-impl<A: Author, T: Clone> Chronofold<A, T> {
+impl<A: Author, T: Clone + fmt::Debug> Chronofold<A, T> {
     /// Returns an iterator over ops in log order.
     pub fn iter_ops<'a, R>(&'a self, range: R) -> impl Iterator<Item = Op<A, T>> + 'a
     where
@@ -96,11 +92,88 @@ impl<A: Author, T: Clone> Chronofold<A, T> {
             .filter(move |(i, _)| range.contains(&LogIndex(*i)))
             .map(move |(i, change)| {
                 Op::new(
-                    self.timestamps[i],
-                    self.references[i].map(|r| self.timestamps[r.0]),
+                    self.timestamp(&LogIndex(i)).unwrap(),
+                    self.references
+                        .get(&LogIndex(i))
+                        .map(|r| self.timestamp(&r).unwrap()),
                     change,
                 )
             })
+    }
+}
+
+pub(crate) struct CausalIter<'a, A: Author, T> {
+    cfold: &'a Chronofold<A, T>,
+    current: Option<LogIndex>,
+    first_excluded: Option<LogIndex>,
+}
+
+impl<'a, A: Author, T> Iterator for CausalIter<'a, A, T> {
+    type Item = (&'a Change<T>, LogIndex);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.current.take() {
+            Some(current) if Some(current) != self.first_excluded => {
+                self.current = self.cfold.index_after(current);
+                Some((&self.cfold.log[current.0], current))
+            }
+            _ => None,
+        }
+    }
+}
+
+pub struct Iter<'a, A: Author, T> {
+    causal_iter: CausalIter<'a, A, T>,
+    current: Option<(&'a Change<T>, LogIndex)>,
+}
+
+impl<'a, A: Author, T> Iterator for Iter<'a, A, T> {
+    type Item = (&'a T, LogIndex);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let (skipped, next) =
+                skip_while(&mut self.causal_iter, |(c, _)| matches!(c, Change::Delete));
+            if skipped == 0 {
+                // the current item is not deleted
+                match self.current.take() {
+                    None => {
+                        return None;
+                    }
+                    Some((Change::Insert(v), idx)) => {
+                        self.current = next;
+                        return Some((v, idx));
+                    }
+                    _ => unreachable!(),
+                }
+            } else {
+                // the current item is deleted
+                self.current = next;
+            }
+        }
+    }
+}
+
+/// Skips items where `predicate` returns true.
+///
+/// Note that while this works like `Iterator::skip_while`, it does not create
+/// a new iterator. Instead `iter` is modified.
+fn skip_while<I, P>(iter: &mut I, predicate: P) -> (usize, Option<I::Item>)
+where
+    I: Iterator,
+    P: Fn(&I::Item) -> bool,
+{
+    let mut skipped = 0;
+    loop {
+        match iter.next() {
+            Some(item) if !predicate(&item) => {
+                return (skipped, Some(item));
+            }
+            None => {
+                return (skipped, None);
+            }
+            _ => skipped += 1,
+        }
     }
 }
 
@@ -117,5 +190,17 @@ mod tests {
             vec![LogIndex(1), LogIndex(3), LogIndex(2)],
             cfold.iter_subtree(LogIndex(1)).collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn skip_while() {
+        let mut iter = 2..10;
+        let result = super::skip_while(&mut iter, |i| i < &7);
+        assert_eq!((5, Some(7)), result);
+        assert_eq!(vec![8, 9], iter.collect::<Vec<_>>());
+
+        let mut iter2 = 2..10;
+        let result = super::skip_while(&mut iter2, |i| i < &20);
+        assert_eq!((8, None), result);
     }
 }

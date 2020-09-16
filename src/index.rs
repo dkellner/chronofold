@@ -1,6 +1,7 @@
 use std::fmt;
-use std::ops::Index;
+use std::ops::{Add, Index, Sub};
 
+use crate::offsetmap::Offset;
 use crate::{Author, Change, Chronofold};
 
 /// An index in the log of the chronofold.
@@ -41,7 +42,9 @@ impl<A: Author, T> Chronofold<A, T> {
     ///   1. `index` is the first index (causal order).
     ///   2. `index` is out of bounds.
     pub(crate) fn index_before(&self, index: LogIndex) -> Option<LogIndex> {
-        self.iter_log_indices_causal_range(..index).last()
+        self.iter_log_indices_causal_range(..index)
+            .map(|(_, idx)| idx)
+            .last()
     }
 
     /// Returns the next log index (causal order).
@@ -51,7 +54,67 @@ impl<A: Author, T> Chronofold<A, T> {
     ///   1. `index` is the last index (causal order).
     ///   2. `index` is out of bounds.
     pub(crate) fn index_after(&self, index: LogIndex) -> Option<LogIndex> {
-        self.next_indices.get(index.0).copied().unwrap_or(None)
+        self.next_indices.get(&index)
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub(crate) struct RelativeNextIndex(pub isize);
+
+impl Default for RelativeNextIndex {
+    fn default() -> Self {
+        RelativeNextIndex(1)
+    }
+}
+
+impl Offset<LogIndex> for RelativeNextIndex {
+    fn add(&self, value: &LogIndex) -> LogIndex {
+        LogIndex((value.0 as isize + self.0) as usize)
+    }
+
+    fn sub(a: &LogIndex, b: &LogIndex) -> Self {
+        RelativeNextIndex(a.0 as isize - b.0 as isize)
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub(crate) struct RelativeReference(pub isize);
+
+impl Default for RelativeReference {
+    fn default() -> Self {
+        RelativeReference(-1)
+    }
+}
+
+impl Offset<LogIndex> for RelativeReference {
+    fn add(&self, value: &LogIndex) -> LogIndex {
+        LogIndex((value.0 as isize + self.0) as usize)
+    }
+
+    fn sub(a: &LogIndex, b: &LogIndex) -> Self {
+        RelativeReference(a.0 as isize - b.0 as isize)
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub(crate) struct IndexShift(pub usize);
+
+impl Add<&IndexShift> for &LogIndex {
+    type Output = LogIndex;
+
+    fn add(self, other: &IndexShift) -> LogIndex {
+        LogIndex(self.0 + other.0)
+    }
+}
+
+impl Sub<&IndexShift> for &LogIndex {
+    type Output = LogIndex;
+
+    fn sub(self, other: &IndexShift) -> LogIndex {
+        LogIndex(self.0 - other.0)
     }
 }
 

@@ -1,7 +1,7 @@
-use std::ops::{Bound, RangeBounds};
 use std::fmt;
+use std::ops::{Bound, RangeBounds};
 
-use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
+use crate::{Author, Change, Chronofold, LogIndex, Op};
 
 /// An editing session tied to one author.
 ///
@@ -89,7 +89,7 @@ impl<'a, A: Author, T: fmt::Debug> Session<'a, A, T> {
         I: IntoIterator<Item = T>,
         R: RangeBounds<LogIndex>,
     {
-        let mut last_idx = match range.start_bound() {
+        let last_idx = match range.start_bound() {
             Bound::Unbounded => None,
             Bound::Included(idx) => self.chronofold.index_before(*idx),
             Bound::Excluded(idx) => Some(*idx),
@@ -102,25 +102,27 @@ impl<'a, A: Author, T: fmt::Debug> Session<'a, A, T> {
         for idx in to_remove.into_iter() {
             self.remove(idx);
         }
-        for v in replace_with.into_iter() {
-            last_idx = Some(self.insert_after(last_idx, v));
-        }
-        last_idx
+        self.apply_changes(
+            last_idx,
+            replace_with.into_iter().map(|v| Change::Insert(v)),
+        )
     }
 
     fn apply_change(&mut self, reference: Option<LogIndex>, change: Change<T>) -> LogIndex {
-        self.chronofold
-            .apply_change(self.next_timestamp(), reference, change)
-            .expect("application of own change should never fail")
+        self.apply_changes(reference, Some(change)).unwrap()
     }
 
-    fn next_timestamp(&self) -> Timestamp<A> {
-        let next_index = LogIndex(self.chronofold.log.len());
-        Timestamp(next_index, self.author)
+    fn apply_changes<I>(&mut self, reference: Option<LogIndex>, changes: I) -> Option<LogIndex>
+    where
+        I: IntoIterator<Item = Change<T>>,
+    {
+        self.chronofold
+            .apply_local_changes(self.author, reference, changes)
+            .expect("application of own change should never fail")
     }
 }
 
-impl<'a, A: Author, T: Clone> Session<'a, A, T> {
+impl<'a, A: Author, T: Clone + fmt::Debug> Session<'a, A, T> {
     /// Returns an iterator over ops in log order, that where created in this
     /// session.
     pub fn iter_ops(&'a self) -> impl Iterator<Item = Op<A, T>> + 'a {

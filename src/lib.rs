@@ -75,8 +75,11 @@ mod distributed;
 mod error;
 mod index;
 mod iter;
+mod offsetmap;
+mod rangemap;
 mod session;
 mod version;
+
 pub use crate::distributed::*;
 pub use crate::error::*;
 pub use crate::index::*;
@@ -85,6 +88,11 @@ pub use crate::session::*;
 pub use crate::version::*;
 
 use std::fmt;
+use std::matches;
+
+use crate::index::{IndexShift, RelativeNextIndex, RelativeReference};
+use crate::offsetmap::{Offset, OffsetMap};
+use crate::rangemap::RangeFromMap;
 
 #[cfg(feature = "serde")]
 #[macro_use]
@@ -92,7 +100,7 @@ extern crate serde;
 
 /// An entry in the chronofold's log.
 #[derive(PartialEq, Eq, Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(untagged))]
 pub enum Change<T> {
     Insert(T),
     Delete,
@@ -133,27 +141,86 @@ pub struct Chronofold<A: Author, T> {
     log: Vec<Change<T>>,
     root: Option<LogIndex>,
     version: Version<A>,
-    // TODO: Use sparse arrays for the following secondary logs and exclude the
-    // trivial cases to save memory.
-    next_indices: Vec<Option<LogIndex>>,
-    timestamps: Vec<Timestamp<A>>,
-    references: Vec<Option<LogIndex>>,
-    deleted: Vec<bool>,
+
+    next_indices: OffsetMap<LogIndex, RelativeNextIndex>,
+    references: OffsetMap<LogIndex, RelativeReference>,
+    authors: RangeFromMap<LogIndex, A>,
+    index_shifts: RangeFromMap<LogIndex, IndexShift>,
 }
 
-impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
+impl<A: Author, T> Chronofold<A, T> {
     /// Constructs a new, empty chronofold.
     pub fn new() -> Self {
         Self::default()
     }
 
+    pub(crate) fn next_log_index(&self) -> LogIndex {
+        LogIndex(self.log.len())
+    }
+
+    fn find_predecessor(
+        &self,
+        id: Timestamp<A>,
+        reference: Option<LogIndex>,
+        change: &Change<T>,
+    ) -> Option<LogIndex> {
+        match change {
+            Change::Delete => reference, // deletes have priority
+            _ => {
+                if let Some((_, idx)) = self
+                    .iter_log_indices_causal_range(..) // TODO: performance
+                    .filter(|(_, i)| self.references.get(i) == reference)
+                    .filter(|(c, i)| matches!(c, Change::Delete) || self.timestamp(i).unwrap() > id)
+                    .last()
+                {
+                    self.iter_subtree(idx).last()
+                } else {
+                    reference
+                }
+            }
+        }
+    }
+
+    /// Returns `true` if the chronofold contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the number of elements in the chronofold.
+    pub fn len(&self) -> usize {
+        self.iter().count()
+    }
+
+    /// Returns a reference to a change in the chronofold's log.
+    ///
+    /// If `index` is out of bounds, `None` is returned.
+    pub fn get(&self, index: LogIndex) -> Option<&Change<T>> {
+        self.log.get(index.0)
+    }
+
+    fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LogIndex> {
+        for i in (timestamp.0).0..self.log.len() {
+            if self.timestamp(&LogIndex(i)).unwrap() == *timestamp {
+                return Some(LogIndex(i));
+            }
+        }
+        None
+    }
+
+    pub(crate) fn timestamp(&self, index: &LogIndex) -> Option<Timestamp<A>> {
+        if let (Some(shift), Some(author)) = (self.index_shifts.get(index), self.authors.get(index))
+        {
+            Some(Timestamp(index - shift, *author))
+        } else {
+            None
+        }
+    }
+}
+
+impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
     /// Creates an editing session for a single author.
     pub fn session(&mut self, author: A) -> Session<'_, A, T> {
         Session::new(author, self)
-    }
-
-    pub(crate) fn next_log_index(&self) -> LogIndex {
-        LogIndex(self.log.len())
     }
 
     /// Applies an op to the chronofold.
@@ -185,40 +252,27 @@ impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
         change: Change<T>,
     ) -> Result<LogIndex, ChronofoldError<A, T>> {
         // Find the predecessor to `op`.
-        let predecessor = if let Some(idx) = self
-            .iter_log_indices_causal_range(..)
-            .filter(|i| self.references[i.0] == reference)
-            .filter(|i| self.timestamps[i.0] > id)
-            .last()
-        {
-            self.iter_subtree(idx).last()
-        } else {
-            reference
-        };
+        let predecessor = self.find_predecessor(id, reference, &change);
 
         // Set the predecessors next index to our new change's index while
         // keeping it's previous next index for ourselves.
         let new_index = LogIndex(self.log.len());
         let next_index;
         if let Some(idx) = predecessor {
-            next_index = self.next_indices[idx.0];
-            self.next_indices[idx.0] = Some(new_index);
+            next_index = self.next_indices.get(&idx);
+            self.next_indices.set(idx, Some(new_index));
         } else {
             next_index = self.root;
             self.root = Some(new_index);
         }
 
-        // If `op` is a removal, mark the referenced change as deleted.
-        if let (Some(idx), Change::Delete) = (reference, &change) {
-            self.deleted[idx.0] = true;
-        }
-
         // Append to the chronofold's log and secondary logs.
         self.log.push(change);
-        self.next_indices.push(next_index);
-        self.timestamps.push(id);
-        self.references.push(reference);
-        self.deleted.push(false);
+        self.next_indices.set(new_index, next_index);
+        self.authors.set(new_index, id.1);
+        self.index_shifts
+            .set(new_index, IndexShift(new_index.0 - (id.0).0));
+        self.references.set(new_index, reference);
 
         // Increment version.
         self.version.inc(&id);
@@ -226,30 +280,68 @@ impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
         Ok(new_index)
     }
 
-    /// Returns `true` if the chronofold contains no elements.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Returns the number of elements in the chronofold.
-    pub fn len(&self) -> usize {
-        self.iter().count()
-    }
-
-    /// Returns a reference to a change in the chronofold's log.
+    /// Applies consecutive local changes.
     ///
-    /// If `index` is out of bounds, `None` is returned.
-    pub fn get(&self, index: LogIndex) -> Option<&Change<T>> {
-        self.log.get(index.0)
-    }
+    /// For local changes the following optimizations can be applied:
+    /// - id equals (log index, author)
+    /// - predecessor always equals reference (no preemptive siblings)
+    /// - next index has to be set only for the first and the last change
+    pub(crate) fn apply_local_changes<I>(
+        &mut self,
+        author: A,
+        reference: Option<LogIndex>,
+        changes: I,
+    ) -> Result<Option<LogIndex>, ChronofoldError<A, T>>
+    where
+        I: IntoIterator<Item = Change<T>>,
+    {
+        let mut last_id = None;
+        let mut last_next_index = None;
 
-    fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LogIndex> {
-        for i in (timestamp.0).0..self.log.len() {
-            if self.timestamps[i] == *timestamp {
-                return Some(LogIndex(i));
+        let mut predecessor = reference;
+
+        let mut changes = changes.into_iter();
+        if let Some(first_change) = changes.next() {
+            let new_index = LogIndex(self.log.len());
+            let id = Timestamp(new_index, author);
+            last_id = Some(id);
+
+            // Set the predecessors next index to our new change's index while
+            // keeping it's previous next index for ourselves.
+            if let Some(idx) = predecessor {
+                last_next_index = Some(self.next_indices.get(&idx));
+                self.next_indices.set(idx, Some(new_index));
+            } else {
+                last_next_index = Some(self.root);
+                self.root = Some(new_index);
             }
+
+            self.log.push(first_change);
+            self.authors.set(new_index, author);
+            self.index_shifts.set(new_index, IndexShift(0));
+            self.references.set(new_index, predecessor);
+
+            predecessor = Some(new_index);
         }
-        None
+
+        for change in changes {
+            let new_index = RelativeNextIndex::default().add(predecessor.as_ref().unwrap());
+            let id = Timestamp(new_index, author);
+            last_id = Some(id);
+
+            // Append to the chronofold's log and secondary logs.
+            self.log.push(change);
+
+            predecessor = Some(new_index);
+        }
+
+        if let (Some(id), Some(next_index)) = (last_id, last_next_index) {
+            self.next_indices.set(id.0, next_index);
+            self.version.inc(&id);
+            Ok(Some(id.0))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -259,10 +351,10 @@ impl<A: Author, T> Default for Chronofold<A, T> {
             log: Vec::default(),
             root: None,
             version: Version::default(),
-            next_indices: Vec::default(),
-            timestamps: Vec::default(),
-            references: Vec::default(),
-            deleted: Vec::default(),
+            next_indices: OffsetMap::default(),
+            authors: RangeFromMap::default(),
+            index_shifts: RangeFromMap::default(),
+            references: OffsetMap::default(),
         }
     }
 }
