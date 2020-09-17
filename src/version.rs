@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::fmt;
 
 use crate::{Author, Chronofold, LogIndex, Op, Timestamp};
 
@@ -69,7 +68,7 @@ impl<A: Author> Version<A> {
     }
 }
 
-impl<A: Author, T: Clone + fmt::Debug> Chronofold<A, T> {
+impl<A: Author, T: Clone> Chronofold<A, T> {
     /// Returns a vector clock representing the version of this chronofold.
     pub fn version(&self) -> &Version<A> {
         &self.version

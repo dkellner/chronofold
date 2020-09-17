@@ -9,10 +9,9 @@ fn unknown_timestamp() {
         Some(unknown),
         Change::Insert('!'),
     );
-    assert_eq!(
-        Err(ChronofoldError::UnknownReference(op.clone())),
-        cfold.apply(op)
-    );
+    let err = cfold.apply(op.clone()).unwrap_err();
+    assert_eq!(ChronofoldError::UnknownReference(op), err);
+    assert_eq!("unknown reference <0, 42>", format!("{}", err));
 }
 
 #[test]
@@ -22,8 +21,7 @@ fn existing_timestamp() {
     let mut cfold = Chronofold::<u8, char>::new();
     let op = Op::new(Timestamp(LogIndex(0), 1), None, Change::Insert('.'));
     assert_eq!(Ok(()), cfold.apply(op.clone()));
-    assert_eq!(
-        Err(ChronofoldError::ExistingTimestamp(op.clone())),
-        cfold.apply(op)
-    );
+    let err = cfold.apply(op.clone()).unwrap_err();
+    assert_eq!(ChronofoldError::ExistingTimestamp(op), err);
+    assert_eq!("existing timestamp <0, 1>", format!("{}", err));
 }

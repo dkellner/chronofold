@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::fmt;
 use std::matches;
 use std::ops::{Bound, RangeBounds};
 
@@ -79,7 +78,7 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 }
 
-impl<A: Author, T: Clone + fmt::Debug> Chronofold<A, T> {
+impl<A: Author, T: Clone> Chronofold<A, T> {
     /// Returns an iterator over ops in log order.
     pub fn iter_ops<'a, R>(&'a self, range: R) -> impl Iterator<Item = Op<A, T>> + 'a
     where

@@ -215,9 +215,7 @@ impl<A: Author, T> Chronofold<A, T> {
             None
         }
     }
-}
 
-impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
     /// Creates an editing session for a single author.
     pub fn session(&mut self, author: A) -> Session<'_, A, T> {
         Session::new(author, self)

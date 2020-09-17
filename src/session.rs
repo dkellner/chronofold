@@ -1,4 +1,3 @@
-use std::fmt;
 use std::ops::{Bound, RangeBounds};
 
 use crate::{Author, Change, Chronofold, LogIndex, Op};
@@ -19,7 +18,7 @@ pub struct Session<'a, A: Author, T> {
     first_index: LogIndex,
 }
 
-impl<'a, A: Author, T: fmt::Debug> Session<'a, A, T> {
+impl<'a, A: Author, T> Session<'a, A, T> {
     /// Creates an editing session for a single author.
     pub fn new(author: A, chronofold: &'a mut Chronofold<A, T>) -> Self {
         let first_index = chronofold.next_log_index();
@@ -122,7 +121,7 @@ impl<'a, A: Author, T: fmt::Debug> Session<'a, A, T> {
     }
 }
 
-impl<'a, A: Author, T: Clone + fmt::Debug> Session<'a, A, T> {
+impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     /// Returns an iterator over ops in log order, that where created in this
     /// session.
     pub fn iter_ops(&'a self) -> impl Iterator<Item = Op<A, T>> + 'a {
