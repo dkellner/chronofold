@@ -12,7 +12,6 @@ repository = "https://git.sr.ht/~dkellner/chronofold"
 
 [dependencies]
 serde = { version = "1.0.106", optional = true, features = ["derive"] }
-thiserror = "1.0.15"
 
 [dev-dependencies]
 anyhow = "1.0.28"
