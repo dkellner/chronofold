@@ -97,15 +97,15 @@ where
     cfold_left.session(1).extend(initial.chars());
     let mut cfold_right = cfold_left.clone();
 
-    let ops_left: Vec<Op<u8, char>> = {
+    let ops_left: Vec<_> = {
         let mut session = cfold_left.session(1);
         mutate_left(&mut session);
-        session.iter_ops().collect()
+        session.iter_ops().map(Op::cloned).collect()
     };
-    let ops_right: Vec<Op<u8, char>> = {
+    let ops_right: Vec<_> = {
         let mut session = cfold_right.session(2);
         mutate_right(&mut session);
-        session.iter_ops().collect()
+        session.iter_ops().map(Op::cloned).collect()
     };
 
     for op in ops_left {

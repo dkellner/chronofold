@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::matches;
-use std::ops::{Bound, RangeBounds};
+use std::ops::{Bound, Range, RangeBounds};
 
 use crate::{Author, Change, Chronofold, LogIndex, Op};
 
@@ -76,28 +76,29 @@ impl<A: Author, T> Chronofold<A, T> {
     pub fn iter_changes(&self) -> impl Iterator<Item = &Change<T>> {
         self.log.iter()
     }
-}
 
-impl<A: Author, T: Clone> Chronofold<A, T> {
     /// Returns an iterator over ops in log order.
-    pub fn iter_ops<'a, R>(&'a self, range: R) -> impl Iterator<Item = Op<A, T>> + 'a
+    pub fn iter_ops<'a, R>(&'a self, range: R) -> Ops<'a, A, T>
     where
         R: RangeBounds<LogIndex> + 'a,
     {
-        self.log
-            .iter()
-            .cloned()
-            .enumerate()
-            .filter(move |(i, _)| range.contains(&LogIndex(*i)))
-            .map(move |(i, change)| {
-                Op::new(
-                    self.timestamp(&LogIndex(i)).unwrap(),
-                    self.references
-                        .get(&LogIndex(i))
-                        .map(|r| self.timestamp(&r).unwrap()),
-                    change,
-                )
-            })
+        let oob = LogIndex(self.log.len());
+        let start = match range.start_bound() {
+            Bound::Unbounded => LogIndex(0),
+            Bound::Included(idx) => *idx,
+            Bound::Excluded(idx) => self.index_after(*idx).unwrap_or(oob),
+        }
+        .0;
+        let end = match range.end_bound() {
+            Bound::Unbounded => oob,
+            Bound::Included(idx) => self.index_after(*idx).unwrap_or(oob),
+            Bound::Excluded(idx) => *idx,
+        }
+        .0;
+        Ops {
+            cfold: self,
+            idx_iter: start..end,
+        }
     }
 }
 
@@ -153,6 +154,30 @@ impl<'a, A: Author, T> Iterator for Iter<'a, A, T> {
     }
 }
 
+pub struct Ops<'a, A: Author, T> {
+    cfold: &'a Chronofold<A, T>,
+    idx_iter: Range<usize>,
+}
+
+impl<'a, A: Author, T> Iterator for Ops<'a, A, T> {
+    type Item = Op<A, &'a T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let idx = LogIndex(self.idx_iter.next()?);
+        let id = self
+            .cfold
+            .timestamp(&idx)
+            .expect("timestamps of already applied ops have to exist");
+        let reference = self.cfold.references.get(&idx).map(|r| {
+            self.cfold
+                .timestamp(&r)
+                .expect("references of already applied ops have to exist")
+        });
+        let change = &self.cfold.log[idx.0];
+        Some(Op::new(id, reference, change.as_ref()))
+    }
+}
+
 /// Skips items where `predicate` returns true.
 ///
 /// Note that while this works like `Iterator::skip_while`, it does not create
@@ -179,6 +204,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Timestamp;
 
     #[test]
     fn iter_subtree() {
@@ -188,6 +214,31 @@ mod tests {
         assert_eq!(
             vec![LogIndex(1), LogIndex(3), LogIndex(2)],
             cfold.iter_subtree(LogIndex(1)).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn iter_ops() {
+        let mut cfold = Chronofold::<u8, char>::default();
+        cfold.session(1).extend("Hi!".chars());
+        let op0 = Op::new(Timestamp(LogIndex(0), 1), None, Change::Insert(&'H'));
+        let op1 = Op::new(
+            Timestamp(LogIndex(1), 1),
+            Some(Timestamp(LogIndex(0), 1)),
+            Change::Insert(&'i'),
+        );
+        let op2 = Op::new(
+            Timestamp(LogIndex(2), 1),
+            Some(Timestamp(LogIndex(1), 1)),
+            Change::Insert(&'!'),
+        );
+        assert_eq!(
+            vec![op0.clone(), op1.clone()],
+            cfold.iter_ops(..LogIndex(2)).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            vec![op1, op2],
+            cfold.iter_ops(LogIndex(1)..).collect::<Vec<_>>()
         );
     }
 

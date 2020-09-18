@@ -38,14 +38,14 @@
 //!         LogIndex(15)..LogIndex(15),
 //!         " - a data structure for versioned text".chars(),
 //!     );
-//!     session.iter_ops().collect()
+//!     session.iter_ops().map(Op::cloned).collect()
 //! };
 //!
 //! // ... while Bob fixes a typo.
 //! let ops_b: Vec<Op<AuthorId, char>> = {
 //!     let mut session = cfold_b.session("bob");
 //!     session.insert_after(Some(LogIndex(10)), 'o');
-//!     session.iter_ops().collect()
+//!     session.iter_ops().map(Op::cloned).collect()
 //! };
 //!
 //! // Now their respective states have diverged.
@@ -104,6 +104,28 @@ extern crate serde;
 pub enum Change<T> {
     Insert(T),
     Delete,
+}
+
+impl<T> Change<T> {
+    /// Converts from `&Change<T>` to `Change<&T>`.
+    pub fn as_ref(&self) -> Change<&T> {
+        use Change::*;
+        match *self {
+            Insert(ref x) => Insert(x),
+            Delete => Delete,
+        }
+    }
+}
+
+impl<T: Clone> Change<&T> {
+    /// Maps a Change<&T> to a Change<T> by cloning its contents.
+    pub fn cloned(self) -> Change<T> {
+        use Change::*;
+        match self {
+            Insert(x) => Insert(x.clone()),
+            Delete => Delete,
+        }
+    }
 }
 
 /// A conflict-free replicated data structure for versioned sequences.

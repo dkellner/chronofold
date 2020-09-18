@@ -57,3 +57,14 @@ impl<A, T> Op<A, T> {
         }
     }
 }
+
+impl<A, T: Clone> Op<A, &T> {
+    /// Maps an Op<A, &T> to an Op<A, T> by cloning the contents of the change.
+    pub fn cloned(self) -> Op<A, T> {
+        Op {
+            id: self.id,
+            reference: self.reference,
+            change: self.change.cloned(),
+        }
+    }
+}

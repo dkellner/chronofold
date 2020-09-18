@@ -68,7 +68,7 @@ impl<A: Author> Version<A> {
     }
 }
 
-impl<A: Author, T: Clone> Chronofold<A, T> {
+impl<A: Author, T> Chronofold<A, T> {
     /// Returns a vector clock representing the version of this chronofold.
     pub fn version(&self) -> &Version<A> {
         &self.version
@@ -78,7 +78,7 @@ impl<A: Author, T: Clone> Chronofold<A, T> {
     pub fn iter_newer_ops<'a>(
         &'a self,
         version: &'a Version<A>,
-    ) -> impl Iterator<Item = Op<A, T>> + 'a {
+    ) -> impl Iterator<Item = Op<A, &'a T>> + 'a {
         // TODO: Don't iterate over all ops in cases where that is not
         // necessary.
         self.iter_ops(..)

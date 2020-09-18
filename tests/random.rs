@@ -67,7 +67,7 @@ fn random_edits(
         }
     }
 
-    session.iter_ops().collect()
+    session.iter_ops().map(Op::cloned).collect()
 }
 
 fn random_word(rng: &mut ThreadRng) -> String {

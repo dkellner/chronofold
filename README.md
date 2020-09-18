@@ -38,14 +38,14 @@ let ops_a: Vec<Op<AuthorId, char>> = {
         LogIndex(15)..LogIndex(15),
         " - a data structure for versioned text".chars(),
     );
-    session.iter_ops().collect()
+    session.iter_ops().map(Op::cloned).collect()
 };
 
 // ... while Bob fixes a typo.
 let ops_b: Vec<Op<AuthorId, char>> = {
     let mut session = cfold_b.session("bob");
     session.insert_after(Some(LogIndex(10)), 'o');
-    session.iter_ops().collect()
+    session.iter_ops().map(Op::cloned).collect()
 };
 
 // Now their respective states have diverged.

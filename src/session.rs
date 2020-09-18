@@ -119,12 +119,10 @@ impl<'a, A: Author, T> Session<'a, A, T> {
             .apply_local_changes(self.author, reference, changes)
             .expect("application of own change should never fail")
     }
-}
 
-impl<'a, A: Author, T: Clone> Session<'a, A, T> {
     /// Returns an iterator over ops in log order, that where created in this
     /// session.
-    pub fn iter_ops(&'a self) -> impl Iterator<Item = Op<A, T>> + 'a {
+    pub fn iter_ops(&'a self) -> impl Iterator<Item = Op<A, &'a T>> + 'a {
         self.chronofold
             .iter_ops(self.first_index..)
             .filter(move |op| op.id.1 == self.author)
