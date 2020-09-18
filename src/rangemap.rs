@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub(crate) struct RangeFromMap<K: Ord, V> {
-    #[cfg_attr(feature = "serde", serde(flatten))]
     map: BTreeMap<K, V>,
 }
 

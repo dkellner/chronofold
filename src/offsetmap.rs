@@ -13,7 +13,6 @@ use std::collections::BTreeMap;
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub(crate) struct OffsetMap<K: Ord, O> {
-    #[cfg_attr(feature = "serde", serde(flatten))]
     map: BTreeMap<K, Option<O>>,
 }
 
