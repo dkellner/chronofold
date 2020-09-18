@@ -5,9 +5,7 @@ use crate::{Author, Chronofold, LogIndex, Op, Timestamp};
 
 /// A vector clock representing the chronofold's version.
 #[derive(PartialEq, Eq, Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Version<A: Author> {
-    #[cfg_attr(feature = "serde", serde(flatten))]
+pub struct Version<A> {
     log_indices: BTreeMap<A, LogIndex>,
 }
 
@@ -28,6 +26,11 @@ impl<A: Author> Version<A> {
     /// Returns an iterator over the timestamps in this version.
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = Timestamp<A>> + 'a {
         self.log_indices.iter().map(|(a, i)| Timestamp(*i, *a))
+    }
+
+    /// Returns the version's log index for `author`.
+    pub fn get(&self, author: &A) -> Option<LogIndex> {
+        self.log_indices.get(author).cloned()
     }
 }
 
@@ -61,13 +64,6 @@ impl<A: Author> PartialOrd for Version<A> {
     }
 }
 
-impl<A: Author> Version<A> {
-    /// Returns the version's log index for `author`.
-    pub fn get(&self, author: &A) -> Option<LogIndex> {
-        self.log_indices.get(author).cloned()
-    }
-}
-
 impl<A: Author, T> Chronofold<A, T> {
     /// Returns a vector clock representing the version of this chronofold.
     pub fn version(&self) -> &Version<A> {
@@ -86,5 +82,41 @@ impl<A: Author, T> Chronofold<A, T> {
                 None => true,
                 Some(idx) => op.id.0 > *idx,
             })
+    }
+}
+
+// TODO: Figure out how to derive Serialize/Deserialize only for `A: Ord`.
+#[cfg(feature = "serde")]
+mod serde {
+    use super::Version;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::cmp::Ord;
+    use std::collections::BTreeMap;
+
+    impl<A> Serialize for Version<A>
+    where
+        A: Serialize + Ord,
+    {
+        #[inline]
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            self.log_indices.serialize(serializer)
+        }
+    }
+
+    impl<'de, A> Deserialize<'de> for Version<A>
+    where
+        A: Deserialize<'de> + Ord,
+    {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            Ok(Self {
+                log_indices: BTreeMap::deserialize(deserializer)?,
+            })
+        }
     }
 }

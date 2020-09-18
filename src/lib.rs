@@ -159,9 +159,16 @@ impl<T: Clone> Change<&T> {
 /// [`Index`]: https://doc.rust-lang.org/std/ops/trait.Index.html
 #[derive(PartialEq, Eq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Chronofold<A: Author, T> {
+pub struct Chronofold<A, T> {
     log: Vec<Change<T>>,
     root: Option<LogIndex>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(bound(
+            serialize = "Version<A>: serde::Serialize",
+            deserialize = "Version<A>: serde::Deserialize<'de>"
+        ))
+    )]
     version: Version<A>,
 
     next_indices: OffsetMap<LogIndex, RelativeNextIndex>,

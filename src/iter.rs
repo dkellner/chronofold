@@ -102,7 +102,7 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 }
 
-pub(crate) struct CausalIter<'a, A: Author, T> {
+pub(crate) struct CausalIter<'a, A, T> {
     cfold: &'a Chronofold<A, T>,
     current: Option<LogIndex>,
     first_excluded: Option<LogIndex>,
@@ -122,7 +122,7 @@ impl<'a, A: Author, T> Iterator for CausalIter<'a, A, T> {
     }
 }
 
-pub struct Iter<'a, A: Author, T> {
+pub struct Iter<'a, A, T> {
     causal_iter: CausalIter<'a, A, T>,
     current: Option<(&'a Change<T>, LogIndex)>,
 }
@@ -154,7 +154,7 @@ impl<'a, A: Author, T> Iterator for Iter<'a, A, T> {
     }
 }
 
-pub struct Ops<'a, A: Author, T> {
+pub struct Ops<'a, A, T> {
     cfold: &'a Chronofold<A, T>,
     idx_iter: Range<usize>,
 }
