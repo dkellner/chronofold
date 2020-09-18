@@ -122,6 +122,10 @@ impl<'a, A: Author, T> Iterator for CausalIter<'a, A, T> {
     }
 }
 
+/// An iterator over the elements of a chronofold.
+///
+/// This struct is created by the `iter` and `iter_range` methods on
+/// `Chronofold`. See its documentation for more.
 pub struct Iter<'a, A, T> {
     causal_iter: CausalIter<'a, A, T>,
     current: Option<(&'a Change<T>, LogIndex)>,
@@ -154,6 +158,10 @@ impl<'a, A: Author, T> Iterator for Iter<'a, A, T> {
     }
 }
 
+/// An iterator over ops representing a chronofold's changes.
+///
+/// This struct is created by the `iter_ops` method on `Chronofold`. See its
+/// documentation for more.
 pub struct Ops<'a, A, T> {
     cfold: &'a Chronofold<A, T>,
     idx_iter: Range<usize>,
