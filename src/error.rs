@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{Change, Op, Timestamp};
 
-/// An error occured when applying an op.
+/// Represents errors that can occur when applying an op.
 ///
 /// Note that this implements `Debug`, `Display` and `Error` for all types `T`,
 /// as the contents of changes are omitted from any output.
