@@ -222,7 +222,7 @@ fn measure_time<T, F: Fn(&mut Sess<'_>, T), G: Fn(&CFold, &CFold)>(
         let mut session = doc1.session(1);
         apply_change(&mut session, d);
         for op in session.iter_ops() {
-            let _ = doc2.apply(op);
+            let _ = doc2.apply(op.cloned());
         }
     }
     let elapsed = start.elapsed();
