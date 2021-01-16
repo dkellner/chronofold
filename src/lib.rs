@@ -74,6 +74,7 @@
 mod change;
 mod distributed;
 mod error;
+mod fmt;
 mod index;
 mod internal;
 mod iter;
@@ -85,12 +86,11 @@ mod version;
 pub use crate::change::*;
 pub use crate::distributed::*;
 pub use crate::error::*;
+pub use crate::fmt::*;
 pub use crate::index::*;
 pub use crate::iter::*;
 pub use crate::session::*;
 pub use crate::version::*;
-
-use std::fmt;
 
 use crate::index::{IndexShift, RelativeNextIndex, RelativeReference};
 use crate::offsetmap::OffsetMap;
@@ -211,16 +211,5 @@ impl<A: Author, T> Default for Chronofold<A, T> {
             index_shifts: RangeFromMap::default(),
             references: OffsetMap::default(),
         }
-    }
-}
-
-impl<A: Author, T: fmt::Display> fmt::Display for Chronofold<A, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.iter_elements()
-                .fold("".to_owned(), |s, t| s + &t.to_string())
-        )
     }
 }
