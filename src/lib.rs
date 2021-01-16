@@ -71,6 +71,7 @@
 // everything in the crate root and keep our internal module structure
 // private. This keeps things simple for our users and gives us more
 // flexibility in restructuring the crate.
+mod change;
 mod distributed;
 mod error;
 mod index;
@@ -80,6 +81,7 @@ mod rangemap;
 mod session;
 mod version;
 
+pub use crate::change::*;
 pub use crate::distributed::*;
 pub use crate::error::*;
 pub use crate::index::*;
@@ -97,36 +99,6 @@ use crate::rangemap::RangeFromMap;
 #[cfg(feature = "serde")]
 #[macro_use]
 extern crate serde;
-
-/// An entry in the chronofold's log.
-#[derive(PartialEq, Eq, Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(untagged))]
-pub enum Change<T> {
-    Insert(T),
-    Delete,
-}
-
-impl<T> Change<T> {
-    /// Converts from `&Change<T>` to `Change<&T>`.
-    pub fn as_ref(&self) -> Change<&T> {
-        use Change::*;
-        match *self {
-            Insert(ref x) => Insert(x),
-            Delete => Delete,
-        }
-    }
-}
-
-impl<T: Clone> Change<&T> {
-    /// Maps a Change<&T> to a Change<T> by cloning its contents.
-    pub fn cloned(self) -> Change<T> {
-        use Change::*;
-        match self {
-            Insert(x) => Insert(x.clone()),
-            Delete => Delete,
-        }
-    }
-}
 
 /// A conflict-free replicated data structure for versioned sequences.
 ///
