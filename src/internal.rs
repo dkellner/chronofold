@@ -1,6 +1,6 @@
 use crate::index::{IndexShift, RelativeNextIndex};
 use crate::offsetmap::Offset;
-use crate::{Author, Change, Chronofold, ChronofoldError, LogIndex, Timestamp};
+use crate::{Author, Change, Chronofold, LogIndex, Timestamp};
 
 use std::matches;
 
@@ -55,7 +55,7 @@ impl<A: Author, T> Chronofold<A, T> {
         id: Timestamp<A>,
         reference: Option<LogIndex>,
         change: Change<T>,
-    ) -> Result<LogIndex, ChronofoldError<A, T>> {
+    ) -> LogIndex {
         // Find the predecessor to `op`.
         let predecessor = self.find_predecessor(id, reference, &change);
 
@@ -82,7 +82,7 @@ impl<A: Author, T> Chronofold<A, T> {
         // Increment version.
         self.version.inc(&id);
 
-        Ok(new_index)
+        new_index
     }
 
     /// Applies consecutive local changes.
@@ -96,7 +96,7 @@ impl<A: Author, T> Chronofold<A, T> {
         author: A,
         reference: Option<LogIndex>,
         changes: I,
-    ) -> Result<Option<LogIndex>, ChronofoldError<A, T>>
+    ) -> Option<LogIndex>
     where
         I: IntoIterator<Item = Change<T>>,
     {
@@ -146,9 +146,9 @@ impl<A: Author, T> Chronofold<A, T> {
         if let (Some(id), Some(next_index)) = (last_id, last_next_index) {
             self.next_indices.set(id.0, next_index);
             self.version.inc(&id);
-            Ok(Some(id.0))
+            Some(id.0)
         } else {
-            Ok(None)
+            None
         }
     }
 

@@ -190,12 +190,16 @@ impl<A: Author, T> Chronofold<A, T> {
         // with log indices.
         match op.reference {
             Some(t) => match self.log_index(&t) {
-                Some(reference) => self
-                    .apply_change(op.id, Some(reference), op.change)
-                    .map(|_| ()),
+                Some(reference) => {
+                    self.apply_change(op.id, Some(reference), op.change);
+                    Ok(())
+                }
                 None => Err(ChronofoldError::UnknownReference(op)),
             },
-            None => self.apply_change(op.id, None, op.change).map(|_| ()),
+            None => {
+                self.apply_change(op.id, None, op.change);
+                Ok(())
+            }
         }
     }
 }

@@ -9,7 +9,7 @@ impl<A: Author, T> Chronofold<A, T> {
     ///
     /// TODO: The name is a bit unwieldy. I'm reluctant to add it to the public
     /// API before giving it more thought.
-    pub(crate) fn iter_log_indices_causal_range<'a, R>(&'a self, range: R) -> CausalIter<'a, A, T>
+    pub(crate) fn iter_log_indices_causal_range<R>(&self, range: R) -> CausalIter<'_, A, T>
     where
         R: RangeBounds<LogIndex>,
     {
@@ -33,10 +33,7 @@ impl<A: Author, T> Chronofold<A, T> {
     /// Returns an iterator over a subtree.
     ///
     /// The first item is always `root`.
-    pub(crate) fn iter_subtree<'a>(
-        &'a self,
-        root: LogIndex,
-    ) -> impl Iterator<Item = LogIndex> + 'a {
+    pub(crate) fn iter_subtree(&self, root: LogIndex) -> impl Iterator<Item = LogIndex> + '_ {
         let mut subtree: HashSet<LogIndex> = HashSet::new();
         self.iter_log_indices_causal_range(..)
             .filter_map(move |(_, idx)| {

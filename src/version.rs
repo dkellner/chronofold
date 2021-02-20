@@ -24,7 +24,7 @@ impl<A: Author> Version<A> {
     }
 
     /// Returns an iterator over the timestamps in this version.
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = Timestamp<A>> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = Timestamp<A>> + '_ {
         self.log_indices.iter().map(|(a, i)| Timestamp(*i, *a))
     }
 

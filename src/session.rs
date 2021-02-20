@@ -101,10 +101,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
         for idx in to_remove.into_iter() {
             self.remove(idx);
         }
-        self.apply_changes(
-            last_idx,
-            replace_with.into_iter().map(|v| Change::Insert(v)),
-        )
+        self.apply_changes(last_idx, replace_with.into_iter().map(Change::Insert))
     }
 
     fn apply_change(&mut self, reference: Option<LogIndex>, change: Change<T>) -> LogIndex {
@@ -117,7 +114,6 @@ impl<'a, A: Author, T> Session<'a, A, T> {
     {
         self.chronofold
             .apply_local_changes(self.author, reference, changes)
-            .expect("application of own change should never fail")
     }
 
     /// Returns an iterator over ops in log order, that where created in this

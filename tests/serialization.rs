@@ -30,11 +30,9 @@ fn assert_json_max_len(cfold: &Chronofold<usize, char>, max_len: usize) {
     let json = serde_json::to_string(&cfold).unwrap();
     assert!(
         json.len() <= max_len,
-        format!(
-            "length of {} is not <= {} (it is {})",
-            json,
-            max_len,
-            json.len()
-        )
+        "length of {} is not <= {} (it is {})",
+        json,
+        max_len,
+        json.len()
     );
 }
