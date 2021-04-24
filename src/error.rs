@@ -53,6 +53,7 @@ impl<A: fmt::Debug + fmt::Display + Copy, T> From<&Op<A, T>> for DebugOp<A> {
             id: source.id,
             reference: source.reference,
             change: match source.change {
+                Root => Root,
                 Insert(_) => Insert(Omitted),
                 Delete => Delete,
             },

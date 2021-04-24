@@ -37,10 +37,10 @@ fn concurrent_replacements() {
         "foobaz123",
         "foobar",
         |s| {
-            s.splice(LogIndex(3).., "123".chars());
+            s.splice(LogIndex(4).., "123".chars());
         },
         |s| {
-            s.splice(LogIndex(3).., "baz".chars());
+            s.splice(LogIndex(4).., "baz".chars());
         },
     );
 }
@@ -54,10 +54,10 @@ fn concurrent_insertion_deletion() {
         "0!",
         "01",
         |s| {
-            s.insert_after(Some(LogIndex(1)), '!');
+            s.insert_after(LogIndex(2), '!');
         },
         |s| {
-            s.remove(LogIndex(1));
+            s.remove(LogIndex(2));
         },
     );
 
@@ -67,10 +67,10 @@ fn concurrent_insertion_deletion() {
         "01",
         |s| {
             s.extend("23".chars());
-            s.insert_after(Some(LogIndex(1)), '!');
+            s.insert_after(LogIndex(2), '!');
         },
         |s| {
-            s.remove(LogIndex(1));
+            s.remove(LogIndex(2));
         },
     );
 
@@ -79,11 +79,11 @@ fn concurrent_insertion_deletion() {
         "023!",
         "01",
         |s| {
-            s.insert_after(Some(LogIndex(1)), '!');
+            s.insert_after(LogIndex(2), '!');
         },
         |s| {
             s.extend("23".chars());
-            s.remove(LogIndex(1));
+            s.remove(LogIndex(2));
         },
     );
 }
@@ -94,7 +94,7 @@ fn insert_referencing_deleted_element() {
     let mut session = cfold.session(1);
     let idx = session.push_back('!');
     session.clear();
-    session.insert_after(Some(idx), '?');
+    session.insert_after(idx, '?');
     assert_eq!("?", format!("{}", cfold));
 }
 

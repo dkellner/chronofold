@@ -35,7 +35,7 @@
 //! let ops_a: Vec<Op<AuthorId, char>> = {
 //!     let mut session = cfold_a.session("alice");
 //!     session.splice(
-//!         LogIndex(15)..LogIndex(15),
+//!         LogIndex(16)..LogIndex(16),
 //!         " - a data structure for versioned text".chars(),
 //!     );
 //!     session.iter_ops().map(Op::cloned).collect()
@@ -44,7 +44,7 @@
 //! // ... while Bob fixes a typo.
 //! let ops_b: Vec<Op<AuthorId, char>> = {
 //!     let mut session = cfold_b.session("bob");
-//!     session.insert_after(Some(LogIndex(10)), 'o');
+//!     session.insert_after(LogIndex(11), 'o');
 //!     session.iter_ops().map(Op::cloned).collect()
 //! };
 //!
@@ -133,7 +133,7 @@ extern crate serde;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Chronofold<A, T> {
     log: Vec<Change<T>>,
-    root: Option<LogIndex>,
+    root: LogIndex,
     #[cfg_attr(
         feature = "serde",
         serde(bound(
@@ -151,8 +151,27 @@ pub struct Chronofold<A, T> {
 
 impl<A: Author, T> Chronofold<A, T> {
     /// Constructs a new, empty chronofold.
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(author: A) -> Self {
+        let root_idx = LogIndex(0);
+        let mut version = Version::default();
+        version.inc(&Timestamp(root_idx, author));
+        let mut next_indices = OffsetMap::default();
+        next_indices.set(root_idx, None);
+        let mut authors = RangeFromMap::default();
+        authors.set(root_idx, author);
+        let mut index_shifts = RangeFromMap::default();
+        index_shifts.set(root_idx, IndexShift(0));
+        let mut references = OffsetMap::default();
+        references.set(root_idx, None);
+        Self {
+            log: vec![Change::Root],
+            root: LogIndex(0),
+            version,
+            next_indices,
+            authors,
+            index_shifts,
+            references,
+        }
     }
 
     /// Returns `true` if the chronofold contains no elements.
@@ -204,16 +223,8 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 }
 
-impl<A: Author, T> Default for Chronofold<A, T> {
+impl<A: Author + Default, T> Default for Chronofold<A, T> {
     fn default() -> Self {
-        Self {
-            log: Vec::default(),
-            root: None,
-            version: Version::default(),
-            next_indices: OffsetMap::default(),
-            authors: RangeFromMap::default(),
-            index_shifts: RangeFromMap::default(),
-            references: OffsetMap::default(),
-        }
+        Self::new(A::default())
     }
 }

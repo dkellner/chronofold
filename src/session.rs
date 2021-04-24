@@ -1,6 +1,6 @@
 use std::ops::{Bound, RangeBounds};
 
-use crate::{Author, Change, Chronofold, LogIndex, Op};
+use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
 
 /// An editing session tied to one author.
 ///
@@ -45,23 +45,24 @@ impl<'a, A: Author, T> Session<'a, A, T> {
     /// element's log index.
     pub fn push_back(&mut self, value: T) -> LogIndex {
         if let Some((_, last_index)) = self.chronofold.iter().last() {
-            self.insert_after(Some(last_index), value)
+            self.insert_after(last_index, value)
         } else {
-            self.insert_after(None, value)
+            // no non-deleted entries left
+            self.insert_after(self.as_ref().root, value)
         }
     }
 
     /// Prepends an element to the chronofold and returns the new element's log
     /// index.
     pub fn push_front(&mut self, value: T) -> LogIndex {
-        self.insert_after(None, value)
+        self.insert_after(self.as_ref().root, value)
     }
 
     /// Inserts an element after the element with log index `index` and returns
     /// the new element's log index.
     ///
     /// If `index == None`, the element will be inserted at the beginning.
-    pub fn insert_after(&mut self, index: Option<LogIndex>, value: T) -> LogIndex {
+    pub fn insert_after(&mut self, index: LogIndex, value: T) -> LogIndex {
         self.apply_change(index, Change::Insert(value))
     }
 
@@ -70,7 +71,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
     /// Note that this just marks the element as deleted, not actually modify
     /// the log apart from appending a `Change::Delete`.
     pub fn remove(&mut self, index: LogIndex) {
-        self.apply_change(Some(index), Change::Delete);
+        self.apply_change(index, Change::Delete);
     }
 
     /// Extends the chronofold with the contents of `iter`, returns the log
@@ -92,7 +93,8 @@ impl<'a, A: Author, T> Session<'a, A, T> {
             Bound::Unbounded => None,
             Bound::Included(idx) => self.chronofold.index_before(*idx),
             Bound::Excluded(idx) => Some(*idx),
-        };
+        }
+        .unwrap_or(self.as_ref().root);
         let to_remove: Vec<LogIndex> = self
             .chronofold
             .iter_range(range)
@@ -104,11 +106,17 @@ impl<'a, A: Author, T> Session<'a, A, T> {
         self.apply_changes(last_idx, replace_with.into_iter().map(Change::Insert))
     }
 
-    fn apply_change(&mut self, reference: Option<LogIndex>, change: Change<T>) -> LogIndex {
+    pub fn create_root(&mut self) -> LogIndex {
+        let new_index = LogIndex(self.chronofold.log.len());
+        self.chronofold
+            .apply_change(Timestamp(new_index, self.author), None, Change::Root)
+    }
+
+    fn apply_change(&mut self, reference: LogIndex, change: Change<T>) -> LogIndex {
         self.apply_changes(reference, Some(change)).unwrap()
     }
 
-    fn apply_changes<I>(&mut self, reference: Option<LogIndex>, changes: I) -> Option<LogIndex>
+    fn apply_changes<I>(&mut self, reference: LogIndex, changes: I) -> Option<LogIndex>
     where
         I: IntoIterator<Item = Change<T>>,
     {

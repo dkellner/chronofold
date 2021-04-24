@@ -42,9 +42,15 @@ impl<A: Author, T> Chronofold<A, T> {
     ///   1. `index` is the first index (causal order).
     ///   2. `index` is out of bounds.
     pub(crate) fn index_before(&self, index: LogIndex) -> Option<LogIndex> {
-        self.iter_log_indices_causal_range(..index)
-            .map(|(_, idx)| idx)
-            .last()
+        if matches!(self.log.get(index.0), Some(Change::Root)) {
+            Some(index)
+        } else if let Some(reference) = self.references.get(&index) {
+            self.iter_log_indices_causal_range(reference..index)
+                .map(|(_, idx)| idx)
+                .last()
+        } else {
+            None
+        }
     }
 
     /// Returns the next log index (causal order).

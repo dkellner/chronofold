@@ -35,7 +35,7 @@ let mut cfold_b = cfold_a.clone();
 let ops_a: Vec<Op<AuthorId, char>> = {
     let mut session = cfold_a.session("alice");
     session.splice(
-        LogIndex(15)..LogIndex(15),
+        LogIndex(16)..LogIndex(16),
         " - a data structure for versioned text".chars(),
     );
     session.iter_ops().map(Op::cloned).collect()
@@ -44,7 +44,7 @@ let ops_a: Vec<Op<AuthorId, char>> = {
 // ... while Bob fixes a typo.
 let ops_b: Vec<Op<AuthorId, char>> = {
     let mut session = cfold_b.session("bob");
-    session.insert_after(Some(LogIndex(10)), 'o');
+    session.insert_after(LogIndex(11), 'o');
     session.iter_ops().map(Op::cloned).collect()
 };
 

@@ -13,11 +13,14 @@ impl<A: Author, T> Chronofold<A, T> {
     where
         R: RangeBounds<LogIndex>,
     {
-        let current = match range.start_bound() {
-            Bound::Unbounded => self.root,
+        let mut current = match range.start_bound() {
+            Bound::Unbounded => self.index_after(self.root),
             Bound::Included(idx) => Some(*idx),
             Bound::Excluded(idx) => self.index_after(*idx),
         };
+        if let Some((Some(Change::Root), idx)) = current.map(|idx| (self.get(idx), idx)) {
+            current = self.index_after(idx);
+        }
         let first_excluded = match range.end_bound() {
             Bound::Unbounded => None,
             Bound::Included(idx) => self.index_after(*idx),
@@ -35,7 +38,7 @@ impl<A: Author, T> Chronofold<A, T> {
     /// The first item is always `root`.
     pub(crate) fn iter_subtree(&self, root: LogIndex) -> impl Iterator<Item = LogIndex> + '_ {
         let mut subtree: HashSet<LogIndex> = HashSet::new();
-        self.iter_log_indices_causal_range(..)
+        self.iter_log_indices_causal_range(root..)
             .filter_map(move |(_, idx)| {
                 if idx == root || subtree.contains(&self.references.get(&idx)?) {
                     subtree.insert(idx);
@@ -215,10 +218,10 @@ mod tests {
     fn iter_subtree() {
         let mut cfold = Chronofold::<u8, char>::default();
         cfold.session(1).extend("013".chars());
-        cfold.session(1).insert_after(Some(LogIndex(1)), '2');
+        cfold.session(1).insert_after(LogIndex(2), '2');
         assert_eq!(
-            vec![LogIndex(1), LogIndex(3), LogIndex(2)],
-            cfold.iter_subtree(LogIndex(1)).collect::<Vec<_>>()
+            vec![LogIndex(2), LogIndex(4), LogIndex(3)],
+            cfold.iter_subtree(LogIndex(2)).collect::<Vec<_>>()
         );
     }
 
@@ -226,24 +229,29 @@ mod tests {
     fn iter_ops() {
         let mut cfold = Chronofold::<u8, char>::default();
         cfold.session(1).extend("Hi!".chars());
-        let op0 = Op::new(Timestamp(LogIndex(0), 1), None, Change::Insert(&'H'));
+        let op0 = Op::new(Timestamp(LogIndex(0), 0), None, Change::Root);
         let op1 = Op::new(
             Timestamp(LogIndex(1), 1),
-            Some(Timestamp(LogIndex(0), 1)),
-            Change::Insert(&'i'),
+            Some(Timestamp(LogIndex(0), 0)),
+            Change::Insert(&'H'),
         );
         let op2 = Op::new(
             Timestamp(LogIndex(2), 1),
             Some(Timestamp(LogIndex(1), 1)),
+            Change::Insert(&'i'),
+        );
+        let op3 = Op::new(
+            Timestamp(LogIndex(3), 1),
+            Some(Timestamp(LogIndex(2), 1)),
             Change::Insert(&'!'),
         );
         assert_eq!(
-            vec![op0.clone(), op1.clone()],
-            cfold.iter_ops(..LogIndex(2)).collect::<Vec<_>>()
+            vec![op0.clone(), op1.clone(), op2.clone()],
+            cfold.iter_ops(..LogIndex(3)).collect::<Vec<_>>()
         );
         assert_eq!(
-            vec![op1, op2],
-            cfold.iter_ops(LogIndex(1)..).collect::<Vec<_>>()
+            vec![op2, op3],
+            cfold.iter_ops(LogIndex(2)..).collect::<Vec<_>>()
         );
     }
 

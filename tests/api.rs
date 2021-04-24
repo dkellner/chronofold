@@ -32,7 +32,7 @@ fn get() {
     let mut cfold = Chronofold::<u8, char>::default();
     cfold.session(1).extend("abc".chars());
     assert_eq!(Some(&'b'), vec.get(1));
-    assert_eq!(Some(&Change::Insert('b')), cfold.get(LogIndex(1)));
+    assert_eq!(Some(&Change::Insert('b')), cfold.get(LogIndex(2)));
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn insert_after() {
             vec.insert(2, 'o');
         },
         |cfold_session| {
-            cfold_session.insert_after(Some(LogIndex(1)), 'o');
+            cfold_session.insert_after(LogIndex(2), 'o');
         },
     );
 }
@@ -106,7 +106,7 @@ fn splice() {
             vec.splice(3..3, "bar".chars());
         },
         |cfold_session| {
-            cfold_session.splice(LogIndex(3)..LogIndex(3), "bar".chars());
+            cfold_session.splice(LogIndex(4)..LogIndex(4), "bar".chars());
         },
     );
 
@@ -130,7 +130,7 @@ fn splice() {
             vec.splice(3..3, "bar".chars());
         },
         |cfold_session| {
-            cfold_session.splice(LogIndex(3)..LogIndex(3), "bar".chars());
+            cfold_session.splice(LogIndex(4)..LogIndex(4), "bar".chars());
         },
     );
 }

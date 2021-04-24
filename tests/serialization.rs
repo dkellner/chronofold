@@ -3,7 +3,7 @@ use chronofold::{Chronofold, LogIndex};
 
 #[test]
 fn roundtrip() {
-    let mut cfold = Chronofold::<usize, char>::new();
+    let mut cfold = Chronofold::<usize, char>::default();
     cfold.session(1).extend("Hello world!".chars());
     let json = serde_json::to_string(&cfold).unwrap();
     eprintln!("{}", json);
@@ -12,18 +12,18 @@ fn roundtrip() {
 
 #[test]
 fn empty() {
-    let cfold = Chronofold::<usize, char>::new();
-    assert_json_max_len(&cfold, 132);
+    let cfold = Chronofold::<usize, char>::default();
+    assert_json_max_len(&cfold, 166);
 }
 
 #[test]
 fn local_edits_only() {
-    let mut cfold = Chronofold::<usize, char>::new();
+    let mut cfold = Chronofold::<usize, char>::default();
     cfold.session(1).extend("Hello world!".chars());
     cfold
         .session(1)
         .splice(LogIndex(6)..LogIndex(11), "cfold".chars());
-    assert_json_max_len(&cfold, 390);
+    assert_json_max_len(&cfold, 616);
 }
 
 fn assert_json_max_len(cfold: &Chronofold<usize, char>, max_len: usize) {
