@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{Change, Op, Timestamp};
+use crate::{Op, OpPayload};
 
 /// Represents errors that can occur when applying an op.
 ///
@@ -12,50 +12,54 @@ pub enum ChronofoldError<A, T> {
     ExistingTimestamp(Op<A, T>),
 }
 
-impl<A: fmt::Debug + fmt::Display + Copy, T> fmt::Debug for ChronofoldError<A, T> {
+impl<A, T> fmt::Debug for ChronofoldError<A, T>
+where
+    A: fmt::Debug + fmt::Display + Copy,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ChronofoldError::*;
         let (name, op) = match self {
             UnknownReference(op) => ("UnknownReference", op),
             ExistingTimestamp(op) => ("ExistingTimestamp", op),
         };
-        f.debug_tuple(name).field(&DebugOp::from(op)).finish()
+        f.debug_tuple(name).field(&op.omit_value()).finish()
     }
 }
 
-impl<A: fmt::Debug + fmt::Display + Copy, T> fmt::Display for ChronofoldError<A, T> {
+impl<A, T> fmt::Display for ChronofoldError<A, T>
+where
+    A: fmt::Debug + fmt::Display + Copy,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use ChronofoldError::*;
         match self {
             UnknownReference(op) => write!(
                 f,
                 "unknown reference {}",
-                op.reference.as_ref().expect("reference must not be `None`")
+                op.payload
+                    .reference()
+                    .as_ref()
+                    .expect("reference must not be `None`")
             ),
             ExistingTimestamp(op) => write!(f, "existing timestamp {}", op.id),
         }
     }
 }
 
-impl<A: fmt::Debug + fmt::Display + Copy, T> std::error::Error for ChronofoldError<A, T> {}
+impl<A, T> std::error::Error for ChronofoldError<A, T> where A: fmt::Debug + fmt::Display + Copy {}
 
-#[derive(Debug)]
-struct DebugOp<A> {
-    id: Timestamp<A>,
-    reference: Option<Timestamp<A>>,
-    change: Change<Omitted>,
-}
-
-impl<A: fmt::Debug + fmt::Display + Copy, T> From<&Op<A, T>> for DebugOp<A> {
-    fn from(source: &Op<A, T>) -> Self {
-        use Change::*;
-        Self {
-            id: source.id,
-            reference: source.reference,
-            change: match source.change {
+impl<A, T> Op<A, T>
+where
+    A: Copy,
+{
+    fn omit_value(&self) -> Op<A, Omitted> {
+        use OpPayload::*;
+        Op {
+            id: self.id,
+            payload: match self.payload {
                 Root => Root,
-                Insert(_) => Insert(Omitted),
-                Delete => Delete,
+                Insert(t, _) => Insert(t, Omitted),
+                Delete(t) => Delete(t),
             },
         }
     }

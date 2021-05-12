@@ -1,6 +1,6 @@
 use std::ops::{Bound, RangeBounds};
 
-use crate::{Author, Change, Chronofold, LogIndex, Op, Timestamp};
+use crate::{Author, Change, Chronofold, FromLocalValue, LogIndex, Op, Timestamp};
 
 /// An editing session tied to one author.
 ///
@@ -126,7 +126,10 @@ impl<'a, A: Author, T> Session<'a, A, T> {
 
     /// Returns an iterator over ops in log order, that where created in this
     /// session.
-    pub fn iter_ops(&'a self) -> impl Iterator<Item = Op<A, &'a T>> + 'a {
+    pub fn iter_ops<V>(&'a self) -> impl Iterator<Item = Op<A, V>> + 'a
+    where
+        V: FromLocalValue<'a, A, T> + 'a,
+    {
         self.chronofold
             .iter_ops(self.first_index..)
             .filter(move |op| op.id.1 == self.author)

@@ -129,12 +129,12 @@ where
         expected,
         format!("{}", cfold_left),
         "Left ops:\n{:#?}",
-        cfold_left.iter_ops(..).collect::<Vec<_>>(),
+        cfold_left.iter_ops(..).collect::<Vec<Op<_, &char>>>(),
     );
     assert_eq!(
         expected,
         format!("{}", cfold_right),
         "Right ops:\n{:#?}",
-        cfold_right.iter_ops(..).collect::<Vec<_>>()
+        cfold_right.iter_ops(..).collect::<Vec<Op<_, &char>>>()
     );
 }

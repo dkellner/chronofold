@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use crate::{Author, Chronofold, LogIndex, Op, Timestamp};
+use crate::{Author, Chronofold, FromLocalValue, LogIndex, Op, Timestamp};
 
 /// A vector clock representing the chronofold's version.
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -71,10 +71,13 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     /// Returns an iterator over ops newer than the given version in log order.
-    pub fn iter_newer_ops<'a>(
+    pub fn iter_newer_ops<'a, V>(
         &'a self,
         version: &'a Version<A>,
-    ) -> impl Iterator<Item = Op<A, &'a T>> + 'a {
+    ) -> impl Iterator<Item = Op<A, V>> + 'a
+    where
+        V: FromLocalValue<'a, A, T> + 'a,
+    {
         // TODO: Don't iterate over all ops in cases where that is not
         // necessary.
         self.iter_ops(..)

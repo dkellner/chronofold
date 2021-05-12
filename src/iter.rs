@@ -1,8 +1,9 @@
 use std::collections::HashSet;
+use std::marker::PhantomData;
 use std::matches;
 use std::ops::{Bound, Range, RangeBounds};
 
-use crate::{Author, Change, Chronofold, LogIndex, Op};
+use crate::{Author, Change, Chronofold, FromLocalValue, LogIndex, Op, OpPayload};
 
 impl<A: Author, T> Chronofold<A, T> {
     /// Returns an iterator over the log indices in causal order.
@@ -78,9 +79,10 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     /// Returns an iterator over ops in log order.
-    pub fn iter_ops<'a, R>(&'a self, range: R) -> Ops<'a, A, T>
+    pub fn iter_ops<'a, R, V>(&'a self, range: R) -> Ops<'a, A, T, V>
     where
         R: RangeBounds<LogIndex> + 'a,
+        V: FromLocalValue<'a, A, T>,
     {
         let oob = LogIndex(self.log.len());
         let start = match range.start_bound() {
@@ -98,6 +100,7 @@ impl<A: Author, T> Chronofold<A, T> {
         Ops {
             cfold: self,
             idx_iter: start..end,
+            _op_value: PhantomData,
         }
     }
 }
@@ -162,13 +165,18 @@ impl<'a, A: Author, T> Iterator for Iter<'a, A, T> {
 ///
 /// This struct is created by the `iter_ops` method on `Chronofold`. See its
 /// documentation for more.
-pub struct Ops<'a, A, T> {
+pub struct Ops<'a, A, T, V> {
     cfold: &'a Chronofold<A, T>,
     idx_iter: Range<usize>,
+    _op_value: PhantomData<V>,
 }
 
-impl<'a, A: Author, T> Iterator for Ops<'a, A, T> {
-    type Item = Op<A, &'a T>;
+impl<'a, A, T, V> Iterator for Ops<'a, A, T, V>
+where
+    A: Author,
+    V: FromLocalValue<'a, A, T>,
+{
+    type Item = Op<A, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let idx = LogIndex(self.idx_iter.next()?);
@@ -181,8 +189,12 @@ impl<'a, A: Author, T> Iterator for Ops<'a, A, T> {
                 .timestamp(&r)
                 .expect("references of already applied ops have to exist")
         });
-        let change = &self.cfold.log[idx.0];
-        Some(Op::new(id, reference, change.as_ref()))
+        let payload = match &self.cfold.log[idx.0] {
+            Change::Root => OpPayload::Root,
+            Change::Insert(v) => OpPayload::Insert(reference, V::from_local_value(v, self.cfold)),
+            Change::Delete => OpPayload::Delete(reference.expect("deletes must have a reference")),
+        };
+        Some(Op::new(id, payload))
     }
 }
 
@@ -229,21 +241,21 @@ mod tests {
     fn iter_ops() {
         let mut cfold = Chronofold::<u8, char>::default();
         cfold.session(1).extend("Hi!".chars());
-        let op0 = Op::new(Timestamp(LogIndex(0), 0), None, Change::Root);
-        let op1 = Op::new(
+        let op0 = Op::root(Timestamp(LogIndex(0), 0));
+        let op1 = Op::insert(
             Timestamp(LogIndex(1), 1),
             Some(Timestamp(LogIndex(0), 0)),
-            Change::Insert(&'H'),
+            &'H',
         );
-        let op2 = Op::new(
+        let op2 = Op::insert(
             Timestamp(LogIndex(2), 1),
             Some(Timestamp(LogIndex(1), 1)),
-            Change::Insert(&'i'),
+            &'i',
         );
-        let op3 = Op::new(
+        let op3 = Op::insert(
             Timestamp(LogIndex(3), 1),
             Some(Timestamp(LogIndex(2), 1)),
-            Change::Insert(&'!'),
+            &'!',
         );
         assert_eq!(
             vec![op0.clone(), op1.clone(), op2.clone()],

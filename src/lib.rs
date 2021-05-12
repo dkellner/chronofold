@@ -197,7 +197,10 @@ impl<A: Author, T> Chronofold<A, T> {
     }
 
     /// Applies an op to the chronofold.
-    pub fn apply(&mut self, op: Op<A, T>) -> Result<(), ChronofoldError<A, T>> {
+    pub fn apply<V>(&mut self, op: Op<A, V>) -> Result<(), ChronofoldError<A, V>>
+    where
+        V: IntoLocalValue<A, T>,
+    {
         // Check if an op with the same id was applied already.
         // TODO: Consider adding an `apply_unchecked` variant to skip this
         // check.
@@ -205,20 +208,38 @@ impl<A: Author, T> Chronofold<A, T> {
             return Err(ChronofoldError::ExistingTimestamp(op));
         }
 
-        // Convert the reference timestamp, as all our internal functions work
-        // with log indices.
-        match op.reference {
-            Some(t) => match self.log_index(&t) {
+        use OpPayload::*;
+        match op.payload {
+            Root => {
+                self.apply_change(op.id, None, Change::Root);
+                Ok(())
+            }
+            Insert(Some(t), value) => match self.log_index(&t) {
                 Some(reference) => {
-                    self.apply_change(op.id, Some(reference), op.change);
+                    self.apply_change(
+                        op.id,
+                        Some(reference),
+                        Change::Insert(value.into_local_value(self)),
+                    );
+                    Ok(())
+                }
+                None => Err(ChronofoldError::UnknownReference(Op::insert(
+                    op.id,
+                    Some(t),
+                    value,
+                ))),
+            },
+            Insert(None, value) => {
+                self.apply_change(op.id, None, Change::Insert(value.into_local_value(self)));
+                Ok(())
+            }
+            Delete(t) => match self.log_index(&t) {
+                Some(reference) => {
+                    self.apply_change(op.id, Some(reference), Change::Delete);
                     Ok(())
                 }
                 None => Err(ChronofoldError::UnknownReference(op)),
             },
-            None => {
-                self.apply_change(op.id, None, op.change);
-                Ok(())
-            }
         }
     }
 }
