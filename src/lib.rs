@@ -208,6 +208,13 @@ impl<A: Author, T> Chronofold<A, T> {
             return Err(ChronofoldError::ExistingTimestamp(op));
         }
 
+        // We rely on indices in timestamps being greater or equal than their
+        // indices in every local log. This means we cannot apply an op not
+        // matching this constraint, even if we know the reference.
+        if op.id.0 .0 > self.log.len() {
+            return Err(ChronofoldError::FutureTimestamp(op));
+        }
+
         use OpPayload::*;
         match op.payload {
             Root => {

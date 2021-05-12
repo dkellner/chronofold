@@ -11,6 +11,19 @@ fn unknown_timestamp() {
 }
 
 #[test]
+fn future_timestamp() {
+    let mut cfold = Chronofold::<u8, char>::default();
+    let op = Op::insert(
+        Timestamp(LogIndex(9), 1),
+        Some(Timestamp(LogIndex(0), 0)),
+        '.',
+    );
+    let err = cfold.apply(op.clone()).unwrap_err();
+    assert_eq!(ChronofoldError::FutureTimestamp(op), err);
+    assert_eq!("future timestamp <9, 1>", format!("{}", err));
+}
+
+#[test]
 fn existing_timestamp() {
     // Applying the same op twice results in a
     // `ChronofoldError::ExistingTimestamp`:

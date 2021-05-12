@@ -9,6 +9,7 @@ use crate::{Op, OpPayload};
 #[derive(PartialEq, Eq, Clone)]
 pub enum ChronofoldError<A, T> {
     UnknownReference(Op<A, T>),
+    FutureTimestamp(Op<A, T>),
     ExistingTimestamp(Op<A, T>),
 }
 
@@ -20,6 +21,7 @@ where
         use ChronofoldError::*;
         let (name, op) = match self {
             UnknownReference(op) => ("UnknownReference", op),
+            FutureTimestamp(op) => ("FutureTimestamp", op),
             ExistingTimestamp(op) => ("ExistingTimestamp", op),
         };
         f.debug_tuple(name).field(&op.omit_value()).finish()
@@ -41,6 +43,7 @@ where
                     .as_ref()
                     .expect("reference must not be `None`")
             ),
+            FutureTimestamp(op) => write!(f, "future timestamp {}", op.id),
             ExistingTimestamp(op) => write!(f, "existing timestamp {}", op.id),
         }
     }
