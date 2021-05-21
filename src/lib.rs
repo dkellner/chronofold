@@ -196,6 +196,25 @@ impl<A: Author, T> Chronofold<A, T> {
         Session::new(author, self)
     }
 
+    pub fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LogIndex> {
+        for i in (timestamp.0).0..self.log.len() {
+            if self.timestamp(LogIndex(i)).unwrap() == *timestamp {
+                return Some(LogIndex(i));
+            }
+        }
+        None
+    }
+
+    pub fn timestamp(&self, index: LogIndex) -> Option<Timestamp<A>> {
+        if let (Some(shift), Some(author)) =
+            (self.index_shifts.get(&index), self.authors.get(&index))
+        {
+            Some(Timestamp(&index - shift, *author))
+        } else {
+            None
+        }
+    }
+
     /// Applies an op to the chronofold.
     pub fn apply<V>(&mut self, op: Op<A, V>) -> Result<(), ChronofoldError<A, V>>
     where

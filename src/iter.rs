@@ -182,11 +182,11 @@ where
         let idx = LogIndex(self.idx_iter.next()?);
         let id = self
             .cfold
-            .timestamp(&idx)
+            .timestamp(idx)
             .expect("timestamps of already applied ops have to exist");
         let reference = self.cfold.references.get(&idx).map(|r| {
             self.cfold
-                .timestamp(&r)
+                .timestamp(r)
                 .expect("references of already applied ops have to exist")
         });
         let payload = match &self.cfold.log[idx.0] {

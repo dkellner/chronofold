@@ -27,7 +27,9 @@ impl<A: Author, T> Chronofold<A, T> {
                 if let Some((_, idx)) = self
                     .iter_log_indices_causal_range(reference..)
                     .filter(|(_, i)| self.references.get(i) == Some(reference))
-                    .filter(|(c, i)| matches!(c, Change::Delete) || self.timestamp(i).unwrap() > id)
+                    .filter(|(c, i)| {
+                        matches!(c, Change::Delete) || self.timestamp(*i).unwrap() > id
+                    })
                     .last()
                 {
                     self.iter_subtree(idx).last()
@@ -40,24 +42,6 @@ impl<A: Author, T> Chronofold<A, T> {
                 // XXX: Should we cover this by the type system?
                 unreachable!()
             }
-        }
-    }
-
-    pub(crate) fn log_index(&self, timestamp: &Timestamp<A>) -> Option<LogIndex> {
-        for i in (timestamp.0).0..self.log.len() {
-            if self.timestamp(&LogIndex(i)).unwrap() == *timestamp {
-                return Some(LogIndex(i));
-            }
-        }
-        None
-    }
-
-    pub(crate) fn timestamp(&self, index: &LogIndex) -> Option<Timestamp<A>> {
-        if let (Some(shift), Some(author)) = (self.index_shifts.get(index), self.authors.get(index))
-        {
-            Some(Timestamp(index - shift, *author))
-        } else {
-            None
         }
     }
 
