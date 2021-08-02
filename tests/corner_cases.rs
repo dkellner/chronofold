@@ -46,7 +46,7 @@ fn concurrent_replacements() {
 }
 
 #[test]
-fn insert_after_deleted_element() {
+fn concurrent_insertion_deletion() {
     // Alice inserts after a character that is concurrently deleted by Bob.
 
     // Equal log indices for the conflicting edits:
@@ -86,6 +86,16 @@ fn insert_after_deleted_element() {
             s.remove(LogIndex(1));
         },
     );
+}
+
+#[test]
+fn insert_referencing_deleted_element() {
+    let mut cfold = Chronofold::<u8, char>::default();
+    let mut session = cfold.session(1);
+    let idx = session.push_back('!');
+    session.clear();
+    session.insert_after(Some(idx), '?');
+    assert_eq!("?", format!("{}", cfold));
 }
 
 fn assert_concurrent_eq<F, G>(expected: &str, initial: &str, mutate_left: F, mutate_right: G)

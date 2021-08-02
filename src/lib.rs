@@ -325,7 +325,10 @@ impl<A: Author, T> Chronofold<A, T> {
         let mut last_id = None;
         let mut last_next_index = None;
 
-        let mut predecessor = reference;
+        let mut predecessor = reference.map(|r| match self.find_last_delete(r) {
+            Some(idx) => idx,
+            None => r,
+        });
 
         let mut changes = changes.into_iter();
         if let Some(first_change) = changes.next() {
@@ -369,6 +372,16 @@ impl<A: Author, T> Chronofold<A, T> {
         } else {
             Ok(None)
         }
+    }
+
+    pub(crate) fn find_last_delete(&self, reference: LogIndex) -> Option<LogIndex> {
+        self.iter_log_indices_causal_range(reference..)
+            .skip(1)
+            .filter(|(c, idx)| {
+                matches!(c, Change::Delete) && self.references.get(idx) == Some(reference)
+            })
+            .last()
+            .map(|(_, idx)| idx)
     }
 }
 
