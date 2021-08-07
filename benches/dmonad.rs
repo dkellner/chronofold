@@ -93,12 +93,12 @@ fn insert_chars_at_random_positions(c: &mut Criterion) {
         positions_and_chars,
         |sess, (pos, c)| {
             let idx = if pos == 0 {
-                None // insert as first element
+                LogIndex(0) // insert as first element
             } else {
                 // This is expected to be really slow, as accessing a specific
                 // position (as opposed to a log index) requires walking the
                 // linked list up to that position.
-                Some(sess.as_ref().iter().nth(pos - 1).unwrap().1)
+                sess.as_ref().iter().nth(pos - 1).unwrap().1
             };
             sess.insert_after(idx, c);
         },
@@ -238,7 +238,7 @@ fn measure_space<T, F: Fn(&mut Sess<'_>, T)>(name: &str, input: Vec<T>, apply_ch
     for d in input.into_iter() {
         let mut session = cfold.session(1);
         apply_change(&mut session, d);
-        for op in session.iter_ops() {
+        for op in session.iter_ops::<&char>() {
             total_ops_bytes += serde_json::to_vec(&op).unwrap().len();
         }
     }
