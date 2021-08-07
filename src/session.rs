@@ -81,6 +81,7 @@ impl<'a, A: Author, T> Session<'a, A, T> {
         self.splice(oob..oob, iter)
     }
 
+    #[allow(clippy::needless_collect)] // collect is needed due to borrowing
     /// Replaces the specified range in the chronofold with the given
     /// `replace_with` iterator and returns the log index of the last inserted
     /// element, if any.

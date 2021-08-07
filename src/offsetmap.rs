@@ -31,7 +31,7 @@ impl<K: Ord, O> OffsetMap<K, O> {
 
 impl<K: Ord, O: Offset<K>> OffsetMap<K, O> {
     pub fn get(&self, key: &K) -> Option<K> {
-        match self.map.get(&key) {
+        match self.map.get(key) {
             Some(None) => None,
             Some(Some(offset)) => Some(offset.add(key)),
             None => Some(O::default().add(key)),

@@ -95,7 +95,7 @@ impl<A, T> OpPayload<A, T> {
         match self {
             Root => None,
             Insert(reference, _) => reference.as_ref(),
-            Delete(reference) => Some(&reference),
+            Delete(reference) => Some(reference),
         }
     }
 }
