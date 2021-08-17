@@ -72,6 +72,7 @@
 // private. This keeps things simple for our users and gives us more
 // flexibility in restructuring the crate.
 mod change;
+mod debug;
 mod distributed;
 mod error;
 mod fmt;
