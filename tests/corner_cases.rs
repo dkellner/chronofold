@@ -89,6 +89,16 @@ fn concurrent_insertion_deletion() {
 }
 
 #[test]
+fn concurrent_inserts_referencing_deletions() {
+    let mutate = |s: &mut Session<u8, char>| {
+        s.remove(LogIndex(2));
+        let delete_idx = LogIndex(3);
+        s.insert_after(delete_idx, '3');
+    };
+    assert_concurrent_eq("133", "12", mutate, mutate);
+}
+
+#[test]
 fn insert_referencing_deleted_element() {
     let mut cfold = Chronofold::<u8, char>::default();
     let mut session = cfold.session(1);
@@ -128,13 +138,13 @@ where
     assert_eq!(
         expected,
         format!("{}", cfold_left),
-        "Left ops:\n{:#?}",
-        cfold_left.iter_ops(..).collect::<Vec<Op<_, &char>>>(),
+        "\n{}",
+        cfold_left.formatted_log(),
     );
     assert_eq!(
         expected,
         format!("{}", cfold_right),
-        "Right ops:\n{:#?}",
-        cfold_right.iter_ops(..).collect::<Vec<Op<_, &char>>>()
+        "\n{}",
+        cfold_right.formatted_log(),
     );
 }
