@@ -13,7 +13,7 @@ fn roundtrip() {
 #[test]
 fn empty() {
     let cfold = Chronofold::<usize, char>::default();
-    assert_json_max_len(&cfold, 166);
+    assert_json_max_len(&cfold, 173);
 }
 
 #[test]
@@ -23,7 +23,7 @@ fn local_edits_only() {
     cfold
         .session(1)
         .splice(LogIndex(6)..LogIndex(11), "cfold".chars());
-    assert_json_max_len(&cfold, 616);
+    assert_json_max_len(&cfold, 767);
 }
 
 fn assert_json_max_len(cfold: &Chronofold<usize, char>, max_len: usize) {
