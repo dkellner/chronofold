@@ -15,7 +15,7 @@ impl<A: Author, T> Index<LogIndex> for Chronofold<A, T> {
     type Output = Change<T>;
 
     fn index(&self, index: LogIndex) -> &Self::Output {
-        &self.log[index.0]
+        &self.log[index.0].0
     }
 }
 
@@ -42,11 +42,11 @@ impl<A: Author, T> Chronofold<A, T> {
     ///   1. `index` is the first index (causal order).
     ///   2. `index` is out of bounds.
     pub(crate) fn index_before(&self, index: LogIndex) -> Option<LogIndex> {
-        if matches!(self.log.get(index.0), Some(Change::Root)) {
+        if matches!(self.log.get(index.0).map(|e| &e.0), Some(Change::Root)) {
             Some(index)
         } else if let Some(reference) = self.references.get(&index) {
             self.iter_log_indices_causal_range(reference..index)
-                .map(|(_, idx)| idx)
+                .map(|(_, idx, _)| idx)
                 .last()
         } else {
             None

@@ -72,6 +72,7 @@
 // private. This keeps things simple for our users and gives us more
 // flexibility in restructuring the crate.
 mod change;
+mod debug;
 mod distributed;
 mod error;
 mod fmt;
@@ -132,7 +133,7 @@ extern crate serde;
 #[derive(PartialEq, Eq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Chronofold<A, T> {
-    log: Vec<Change<T>>,
+    log: Vec<(Change<T>, EarliestDeletion)>,
     root: LogIndex,
     #[cfg_attr(
         feature = "serde",
@@ -149,6 +150,8 @@ pub struct Chronofold<A, T> {
     index_shifts: RangeFromMap<LogIndex, IndexShift>,
 }
 
+pub type EarliestDeletion = Option<LogIndex>;
+
 impl<A: Author, T> Chronofold<A, T> {
     /// Constructs a new, empty chronofold.
     pub fn new(author: A) -> Self {
@@ -164,7 +167,7 @@ impl<A: Author, T> Chronofold<A, T> {
         let mut references = OffsetMap::default();
         references.set(root_idx, None);
         Self {
-            log: vec![Change::Root],
+            log: vec![(Change::Root, None)],
             root: LogIndex(0),
             version,
             next_indices,
@@ -188,7 +191,7 @@ impl<A: Author, T> Chronofold<A, T> {
     ///
     /// If `index` is out of bounds, `None` is returned.
     pub fn get(&self, index: LogIndex) -> Option<&Change<T>> {
-        self.log.get(index.0)
+        self.log.get(index.0).map(|e| &e.0)
     }
 
     /// Creates an editing session for a single author.

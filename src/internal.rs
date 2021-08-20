@@ -2,8 +2,6 @@ use crate::index::{IndexShift, RelativeNextIndex};
 use crate::offsetmap::Offset;
 use crate::{Author, Change, Chronofold, LogIndex, Timestamp};
 
-use std::matches;
-
 impl<A: Author, T> Chronofold<A, T> {
     pub(crate) fn next_log_index(&self) -> LogIndex {
         LogIndex(self.log.len())
@@ -16,19 +14,18 @@ impl<A: Author, T> Chronofold<A, T> {
         change: &Change<T>,
     ) -> Option<LogIndex> {
         match (reference, change) {
-            (_, Change::Delete) => reference, // deletes have priority
-            (None, Change::Root) => reference,
+            (None, Change::Root) => None,
             (_, Change::Root) => {
                 // Roots cannot reference other entries.
                 // XXX: Should we cover this by the type system?
                 unreachable!()
             }
             (Some(reference), _change) => {
-                if let Some((_, idx)) = self
+                if let Some((_, idx, _)) = self
                     .iter_log_indices_causal_range(reference..)
-                    .filter(|(_, i)| self.references.get(i) == Some(reference))
-                    .filter(|(c, i)| {
-                        matches!(c, Change::Delete) || self.timestamp(*i).unwrap() > id
+                    .filter(|(_, i, _)| {
+                        self.references.get(i) == Some(reference)
+                            && self.timestamp(*i).unwrap() > id
                     })
                     .last()
                 {
@@ -66,8 +63,12 @@ impl<A: Author, T> Chronofold<A, T> {
             next_index = None;
         }
 
+        if let (Change::Delete, Some(deleted)) = (&change, reference) {
+            self.mark_as_deleted(deleted, new_index);
+        }
+
         // Append to the chronofold's log and secondary logs.
-        self.log.push(change);
+        self.log.push((change, None));
         self.next_indices.set(new_index, next_index);
         self.authors.set(new_index, id.1);
         self.index_shifts
@@ -98,10 +99,7 @@ impl<A: Author, T> Chronofold<A, T> {
         let mut last_id = None;
         let mut last_next_index = None;
 
-        let mut predecessor = match self.find_last_delete(reference) {
-            Some(idx) => idx,
-            None => reference,
-        };
+        let mut predecessor = reference;
 
         let mut changes = changes.into_iter();
         if let Some(first_change) = changes.next() {
@@ -114,7 +112,11 @@ impl<A: Author, T> Chronofold<A, T> {
             last_next_index = Some(self.next_indices.get(&predecessor));
             self.next_indices.set(predecessor, Some(new_index));
 
-            self.log.push(first_change);
+            if let Change::Delete = &first_change {
+                self.mark_as_deleted(predecessor, new_index);
+            }
+
+            self.log.push((first_change, None));
             self.authors.set(new_index, author);
             self.index_shifts.set(new_index, IndexShift(0));
             self.references.set(new_index, Some(predecessor));
@@ -127,8 +129,12 @@ impl<A: Author, T> Chronofold<A, T> {
             let id = Timestamp(new_index, author);
             last_id = Some(id);
 
+            if let Change::Delete = &change {
+                self.mark_as_deleted(predecessor, new_index);
+            }
+
             // Append to the chronofold's log and secondary logs.
-            self.log.push(change);
+            self.log.push((change, None));
 
             predecessor = new_index;
         }
@@ -142,13 +148,10 @@ impl<A: Author, T> Chronofold<A, T> {
         }
     }
 
-    pub(crate) fn find_last_delete(&self, reference: LogIndex) -> Option<LogIndex> {
-        self.iter_log_indices_causal_range(reference..)
-            .skip(1)
-            .filter(|(c, idx)| {
-                matches!(c, Change::Delete) && self.references.get(idx) == Some(reference)
-            })
-            .last()
-            .map(|(_, idx)| idx)
+    fn mark_as_deleted(&mut self, index: LogIndex, deletion: LogIndex) {
+        self.log[index.0].1 = Some(match self.log[index.0].1 {
+            None => deletion,
+            Some(other_deletion) => LogIndex(usize::min(deletion.0, other_deletion.0)),
+        })
     }
 }
