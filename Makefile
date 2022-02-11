@@ -11,7 +11,7 @@ fmt:
 
 test:
 	cargo test --all-features
-	RUSTFLAGS="-Dwarnings" cargo clippy
+	RUSTFLAGS="-Dwarnings" cargo clippy --all-targets --all-features
 	cargo fmt --all -- --check
 
 bench:
