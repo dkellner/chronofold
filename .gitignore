@@ -1,4 +1,4 @@
 .envrc
+.direnv
 /target
 Cargo.lock
-shell.nix
