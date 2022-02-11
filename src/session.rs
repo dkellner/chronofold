@@ -113,6 +113,15 @@ impl<'a, A: Author, T> Session<'a, A, T> {
             .apply_change(Timestamp(new_index, self.author), None, Change::Root)
     }
 
+    pub fn insert(&mut self, value: T) -> LogIndex {
+        let new_index = LogIndex(self.chronofold.log.len());
+        self.chronofold.apply_change(
+            Timestamp(new_index, self.author),
+            None,
+            Change::Insert(value),
+        )
+    }
+
     fn apply_change(&mut self, reference: LogIndex, change: Change<T>) -> LogIndex {
         self.apply_changes(reference, Some(change)).unwrap()
     }

@@ -15,6 +15,7 @@ impl<A: Author, T> Chronofold<A, T> {
     ) -> Option<LogIndex> {
         match (reference, change) {
             (None, Change::Root) => None,
+            (None, Change::Insert(_)) => None,
             (_, Change::Root) => {
                 // Roots cannot reference other entries.
                 // XXX: Should we cover this by the type system?
