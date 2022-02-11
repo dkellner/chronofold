@@ -10,9 +10,7 @@ fn partial_order() {
     assert!(v(vec![t(0, 1)]) < v(vec![t(1, 1)]));
     assert!(v(vec![t(1, 1)]) > v(vec![t(0, 1)]));
 
-    assert!(!(v(vec![t(0, 1)]) == v(vec![t(0, 2)])));
-    assert!(!(v(vec![t(0, 1)]) < v(vec![t(0, 2)])));
-    assert!(!(v(vec![t(0, 1)]) > v(vec![t(0, 2)])));
+    assert_eq!(v(vec![t(0, 1)]).partial_cmp(&v(vec![t(0, 2)])), None);
 }
 
 #[test]

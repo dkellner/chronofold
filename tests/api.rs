@@ -138,8 +138,8 @@ fn splice() {
 fn assert_elements_eq<I, T, F, G>(initial_values: I, mutate_vec: F, mutate_chronofold: G)
 where
     I: Iterator<Item = T>,
-    F: FnOnce(&mut Vec<T>) -> (),
-    G: FnOnce(&mut Session<u8, T>) -> (),
+    F: FnOnce(&mut Vec<T>),
+    G: FnOnce(&mut Session<u8, T>),
     T: PartialEq + Clone + std::fmt::Debug,
 {
     let mut vec: Vec<T> = initial_values.collect();

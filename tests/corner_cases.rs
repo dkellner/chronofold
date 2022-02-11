@@ -110,8 +110,8 @@ fn insert_referencing_deleted_element() {
 
 fn assert_concurrent_eq<F, G>(expected: &str, initial: &str, mutate_left: F, mutate_right: G)
 where
-    F: FnOnce(&mut Session<u8, char>) -> (),
-    G: FnOnce(&mut Session<u8, char>) -> (),
+    F: FnOnce(&mut Session<u8, char>),
+    G: FnOnce(&mut Session<u8, char>),
 {
     let mut cfold_left = Chronofold::<u8, char>::default();
     cfold_left.session(1).extend(initial.chars());
