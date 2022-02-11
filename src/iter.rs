@@ -116,7 +116,7 @@ impl<'a, A: Author, T> Iterator for CausalIter<'a, A, T> {
         match self.current.take() {
             Some(current) if Some(current) != self.first_excluded => {
                 self.current = self.cfold.index_after(current);
-                let (change, deleted) = &self.cfold.log[current.0];
+                let (change, deleted) = &self.cfold.log.get(current.0)?;
                 Some((change, current, *deleted))
             }
             _ => None,

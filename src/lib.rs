@@ -177,6 +177,18 @@ impl<A: Author, T> Chronofold<A, T> {
         }
     }
 
+    pub fn empty() -> Self {
+        Self {
+            log: vec![],
+            root: LogIndex(0),
+            version: Version::default(),
+            next_indices: OffsetMap::default(),
+            authors: RangeFromMap::default(),
+            index_shifts: RangeFromMap::default(),
+            references: OffsetMap::default(),
+        }
+    }
+
     /// Returns `true` if the chronofold contains no elements.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
