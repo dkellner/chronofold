@@ -9,14 +9,12 @@ impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
             "idx", "ref", "next", "del"
         );
         for (idx, change) in self.log.iter().enumerate() {
-            let log_idx = LogIndex(idx);
-            let formatted_ref = format_option(self.references.get(&log_idx));
-            let next = format_option(self.next_indices.get(&log_idx));
+            let idx = LogIndex(idx);
+            let ref_ = format_option(self.references.get(&idx));
+            let next = format_option(self.next_indices.get(&idx));
             let del = format_option(change.1);
-            result += &format!(
-                "{:<4} | {:<4} | {:<4} | {:<4} | {:?}\n",
-                idx, formatted_ref, next, del, change.0
-            );
+            let change = &change.0;
+            result += &format!("{idx:<4} | {ref_:<4} | {next:<4} | {del:<4} | {change:?}\n");
         }
         result
     }
@@ -24,7 +22,7 @@ impl<A: Author, T: fmt::Debug> Chronofold<A, T> {
 
 fn format_option<T: fmt::Display>(option: Option<T>) -> String {
     match option {
-        Some(t) => format!("{}", t),
+        Some(t) => format!("{t}"),
         None => "".to_owned(),
     }
 }

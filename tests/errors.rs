@@ -7,7 +7,7 @@ fn unknown_timestamp() {
     let op = Op::insert(Timestamp(LogIndex(1), 1), Some(unknown), '!');
     let err = cfold.apply(op.clone()).unwrap_err();
     assert_eq!(ChronofoldError::UnknownReference(op), err);
-    assert_eq!("unknown reference <1, 42>", format!("{}", err));
+    assert_eq!("unknown reference <1, 42>", format!("{err}"));
 }
 
 #[test]
@@ -20,7 +20,7 @@ fn future_timestamp() {
     );
     let err = cfold.apply(op.clone()).unwrap_err();
     assert_eq!(ChronofoldError::FutureTimestamp(op), err);
-    assert_eq!("future timestamp <9, 1>", format!("{}", err));
+    assert_eq!("future timestamp <9, 1>", format!("{err}"));
 }
 
 #[test]
@@ -36,5 +36,5 @@ fn existing_timestamp() {
     assert_eq!(Ok(()), cfold.apply(op.clone()));
     let err = cfold.apply(op.clone()).unwrap_err();
     assert_eq!(ChronofoldError::ExistingTimestamp(op), err);
-    assert_eq!("existing timestamp <1, 1>", format!("{}", err));
+    assert_eq!("existing timestamp <1, 1>", format!("{err}"));
 }

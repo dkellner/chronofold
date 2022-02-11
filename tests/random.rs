@@ -30,7 +30,7 @@ fn random_edits_by_two_authors() {
             cfold_alice.apply(op).unwrap();
         }
     }
-    assert_eq!(format!("{}", cfold_alice), format!("{}", cfold_bob));
+    assert_eq!(format!("{cfold_alice}"), format!("{cfold_bob}"));
 }
 
 fn random_edits(

@@ -105,7 +105,7 @@ fn insert_referencing_deleted_element() {
     let idx = session.push_back('!');
     session.clear();
     session.insert_after(idx, '?');
-    assert_eq!("?", format!("{}", cfold));
+    assert_eq!("?", format!("{cfold}"));
 }
 
 fn assert_concurrent_eq<F, G>(expected: &str, initial: &str, mutate_left: F, mutate_right: G)
@@ -137,13 +137,13 @@ where
 
     assert_eq!(
         expected,
-        format!("{}", cfold_left),
+        format!("{cfold_left}"),
         "\n{}",
         cfold_left.formatted_log(),
     );
     assert_eq!(
         expected,
-        format!("{}", cfold_right),
+        format!("{cfold_right}"),
         "\n{}",
         cfold_right.formatted_log(),
     );

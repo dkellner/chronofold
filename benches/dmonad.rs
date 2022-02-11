@@ -38,7 +38,7 @@ fn append_chars(c: &mut Criterion) {
     let input = random_string(&mut rng, N..=N);
     bench(
         c,
-        &format!("[B1.1] Append {} characters", N),
+        &format!("[B1.1] Append {N} characters"),
         input.chars().collect(),
         |sess, c| {
             sess.push_back(c);
@@ -52,7 +52,7 @@ fn insert_string(c: &mut Criterion) {
     let input = random_string(&mut rng, N..=N);
     bench(
         c,
-        &format!("[B1.2] Insert string of length {}", N),
+        &format!("[B1.2] Insert string of length {N}"),
         vec![input.clone()],
         |sess, s| {
             sess.extend(s.chars());
@@ -66,7 +66,7 @@ fn prepend_chars(c: &mut Criterion) {
     let input = random_string(&mut rng, N..=N);
     bench(
         c,
-        &format!("[B1.3] Prepend {} characters", N),
+        &format!("[B1.3] Prepend {N} characters"),
         input.chars().collect(),
         |sess, c| {
             sess.push_front(c);
@@ -89,7 +89,7 @@ fn insert_chars_at_random_positions(c: &mut Criterion) {
 
     bench(
         c,
-        &format!("[B1.4] Insert {} characters at random positions", N),
+        &format!("[B1.4] Insert {N} characters at random positions"),
         positions_and_chars,
         |sess, (pos, c)| {
             let idx = if pos == 0 {
@@ -120,7 +120,7 @@ fn insert_words_at_random_positions(c: &mut Criterion) {
 
     bench(
         c,
-        &format!("[B1.5] Insert {} words at random positions", N),
+        &format!("[B1.5] Insert {N} words at random positions"),
         positions_and_words,
         |sess, (pos, s)| {
             // This is expected to be really slow, as accessing a specific
@@ -141,7 +141,7 @@ fn insert_and_delete_string(c: &mut Criterion) {
     let s = random_string(&mut rng, N..=N);
     bench(
         c,
-        &format!("[B1.6] Insert string of length {}, then delete it", N),
+        &format!("[B1.6] Insert string of length {N}, then delete it"),
         vec![s],
         |sess, s| {
             let last_idx = sess.extend(s.chars()).unwrap();
@@ -175,7 +175,7 @@ fn insert_and_delete_strings_at_random_positions(c: &mut Criterion) {
 
     bench(
         c,
-        &format!("[B1.7] Insert/Delete {} strings at random positions", N),
+        &format!("[B1.7] Insert/Delete {N} strings at random positions"),
         input,
         |sess, (start, end, s)| {
             let a = sess.as_ref().iter().nth(start).map(|(_, idx)| idx);
@@ -197,7 +197,7 @@ fn bench<T: Clone, F: Fn(&mut Sess<'_>, T) + Copy, G: Fn(&CFold, &CFold) + Copy>
     apply_change: F,
     check: G,
 ) {
-    c.bench_function(&format!("{} (time)", name), |b| {
+    c.bench_function(&format!("{name} (time)"), |b| {
         b.iter_custom(|iters| {
             let mut elapsed = Duration::new(0, 0);
             for _i in 0..iters {
@@ -251,8 +251,8 @@ fn measure_space<T, F: Fn(&mut Sess<'_>, T)>(name: &str, input: Vec<T>, apply_ch
 
 fn assert_docs_equal(expected: &str) -> impl Fn(&CFold, &CFold) + Copy + '_ {
     move |doc1, doc2| {
-        let text1 = format!("{}", doc1);
-        let text2 = format!("{}", doc2);
+        let text1 = format!("{doc1}");
+        let text2 = format!("{doc2}");
         assert_eq!(text1, text2);
         assert_eq!(expected, text1);
     }

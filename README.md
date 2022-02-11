@@ -51,9 +51,9 @@ let ops_b: Vec<Op<AuthorId, char>> = {
 // Now their respective states have diverged.
 assert_eq!(
     "Hello chronfold - a data structure for versioned text!",
-    format!("{}", cfold_a),
+    format!("{cfold_a}"),
 );
-assert_eq!("Hello chronofold!", format!("{}", cfold_b));
+assert_eq!("Hello chronofold!", format!("{cfold_b}"));
 
 // As soon as both have seen all ops, their states have converged.
 for op in ops_a {
@@ -63,8 +63,8 @@ for op in ops_b {
     cfold_a.apply(op).unwrap();
 }
 let final_text = "Hello chronofold - a data structure for versioned text!";
-assert_eq!(final_text, format!("{}", cfold_a));
-assert_eq!(final_text, format!("{}", cfold_b));
+assert_eq!(final_text, format!("{cfold_a}"));
+assert_eq!(final_text, format!("{cfold_b}"));
 ```
 
 # Roadmap
